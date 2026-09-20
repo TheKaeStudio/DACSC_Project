@@ -111,9 +111,28 @@ int ClientSocket(char* ipServeur,int portServeur) {
 }
 
 int Send(int sSocket,char* data,int taille) {
-	return 0;
+
+	int nbEcrits; 
+
+	if ((nbEcrits = write(sSocket,data,strlen(data))) ==-1) 
+	{ 
+		perror("Erreur de Send"); 
+		close(sSocket);
+		exit(1); 
+	} 
+		
+	return nbEcrits; 
+
 }
 
 int Receive(int sSocket,char* data) {
-	return 0;
+	int nbLus;
+
+	 if ((nbLus = read(sSocket, data, strlen(data)))==-1)
+	 {
+	 	perror("Erreur de receive"); 
+	 	close(sSocket);
+		exit(1);  
+	 }
+	return nbLus;
 }
