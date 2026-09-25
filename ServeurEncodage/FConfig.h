@@ -1,0 +1,2 @@
+#define PORT_ENCODING  50000
+#define NB_THREADS  10
