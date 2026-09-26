@@ -1,0 +1,6 @@
+/home/student/Documents/DACSC_Project/build/CMakeFiles/App.dir
+/home/student/Documents/DACSC_Project/build/CMakeFiles/ClientEncodage.dir
+/home/student/Documents/DACSC_Project/build/CMakeFiles/ServeurEncodage.dir
+/home/student/Documents/DACSC_Project/build/CMakeFiles/CreationBD.dir
+/home/student/Documents/DACSC_Project/build/CMakeFiles/edit_cache.dir
+/home/student/Documents/DACSC_Project/build/CMakeFiles/rebuild_cache.dir
