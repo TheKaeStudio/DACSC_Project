@@ -81,27 +81,45 @@ int Accept(int sEcoute,char *ipClient) {
 	return sService;
 }
 
-int ClientSocket(char* ipServeur,int portServeur) {
+int ClientSocket(char* ipServeur,int portServeur) 
+{
 	int sClient;
-	 printf("pid = %d\n",getpid());
+	printf("pid = %d\n",getpid());
 
-	 // Creation de la socket
-	 if ((sClient = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-	 {
-	 	perror("Erreur de socket()");
-	 	exit(1);
-	 }
+	// Creation de la socket
+	if ((sClient = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+	{
+		perror("Erreur de socket()");
+		exit(1);
+	}
 
-	 printf("socket creee = %d\n",sClient);
+	printf("socket creee = %d\n",sClient);
 
-	 // Construction de l'adresse du serveur
-	 struct addrinfo hints;
-	 struct addrinfo *results;
-	 memset(&hints,0,sizeof(struct addrinfo));
-	 hints.ai_family = AF_INET;
-	 hints.ai_socktype = SOCK_STREAM;
-	 hints.ai_flags = AI_NUMERICSERV;
+	// Construction de l'adresse du serveur 
+	struct addrinfo hints; 
+	struct addrinfo *results; 
+	memset(&hints,0,sizeof(struct addrinfo)); 
+	hints.ai_family = AF_INET; 
+	hints.ai_socktype = SOCK_STREAM; 
+	hints.ai_flags = AI_NUMERICSERV; 
+	char portToStr[10];
+	sprintf(portToStr, "%d", portServeur);
 
+	if (getaddrinfo(ipServeur,portToStr,&hints,&results) != 0) 
+	{
+		exit(1); 
+	}
+
+	  // Affichage du contenu de l'adresse obtenue 
+	char host[NI_MAXHOST]; 
+	char port[NI_MAXSERV]; 
+	getnameinfo(results->ai_addr,results->ai_addrlen, 
+	host,NI_MAXHOST,port,NI_MAXSERV, 
+	NI_NUMERICSERV | NI_NUMERICHOST); 
+	printf("Mon Adresse IP: %s -- Mon Port: %s\n",host,port); 
+
+
+	
 	 // Demande de connexion
 	 if (connect(sClient,results->ai_addr,results->ai_addrlen) == -1)
 	 {
@@ -116,7 +134,7 @@ int ClientSocket(char* ipServeur,int portServeur) {
 int Send(int sSocket,char* data,int taille) {
 
 	int nbEcrits; 
-
+	
 	if ((nbEcrits = write(sSocket,data,strlen(data))) ==-1) 
 	{ 
 		perror("Erreur de Send"); 
