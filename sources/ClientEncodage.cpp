@@ -10,7 +10,6 @@ void HandlerSIGINT(int s);
 void Echange(char* requete, char* reponse); 
 
 
-
 int main(int argc,char* argv[]) 
 { 
 	if (argc != 3) 
@@ -40,19 +39,44 @@ int main(int argc,char* argv[])
 		exit(1); 
 	} 
 	printf("Connecte sur le serveur.\n"); 
-	// Phase de login 
-
-	/*char user[50],password[50]; 
-
-	printf("user: "); fgets(user,50,stdin); 
-	user[strlen(user)-1] = 0; 
-	printf("password: "); fgets(password,50,stdin); 
-	password[strlen(password)-1] = 0; */
 	
-	while(1)
+	
+	char texte[80]; 
+	sprintf(texte,"Hello, je suis ton ami virtual boby comment vas-tu?"); 
+	int nbEcrits; 
+	
+	if ((nbEcrits = Send(sClient,texte,strlen(texte))) < 0) 
+	{ 
+		perror("Erreur de Send"); 
+		close(sClient); 
+	
+		exit(1); 
+	} 
+	printf("NbEcrits = %d\n",nbEcrits); 
+	printf("Ecrit    = --%s--\n",texte);
+
+	char buffer[100]; 
+	int nbLus; 
+	int verif=1;
+	while(verif)
 	{
-		printf("client %d\n", sClient);
+		if ((nbLus = Receive(sClient,buffer)) < 0) 
+		{ 
+			perror("Erreur de Receive dans Serveur"); 
+			close(sClient); 
+			
+			exit(1); 
+		} 
+		printf("NbLus = %d\n",nbLus); 
+		printf("Lu    = --%s--\n",buffer); 
+		if(nbLus!=0)
+		{
+			verif=2;
+		}
 	}
+	
+	
+	
 	exit(1); 
 	
 }

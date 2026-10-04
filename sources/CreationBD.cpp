@@ -106,6 +106,15 @@ int main(int argc,char *argv[])
     finish_with_error(connexion);
   }
 
+  // Creation de la table users
+  printf("Creation de la table subjects...\n");
+  if (mysql_query(connexion,"CREATE TABLE users ("
+                      "id INT(4) AUTO_INCREMENT PRIMARY KEY,"
+                      "identifiantVARCHAR(20), "
+                      "passeword VARCHAR(20));")) {
+    finish_with_error(connexion);
+  }
+
   // Créer la table books
   printf("Creation de la table books...\n");
   if (mysql_query(connexion, "CREATE TABLE books ("

@@ -32,7 +32,7 @@ int ServerSocket(int port)
 	char portToStr[10];
 	
     sprintf(portToStr, "%d", port);
-    printf("numero de port %s\n", portToStr);
+   
 
 	memset(&hints,0,sizeof(struct addrinfo));
 	hints.ai_family = AF_INET;
@@ -134,8 +134,14 @@ int ClientSocket(char* ipServeur,int portServeur)
 int Send(int sSocket,char* data,int taille) {
 
 	int nbEcrits; 
+	char messagePlusEntete[taille + 5];
+	sprintf(messagePlusEntete,"%04d", taille);
+	strcat(messagePlusEntete, data);
+	printf("messagePlusEntete %s\n", messagePlusEntete);
+	taille=strlen(messagePlusEntete);
 	
-	if ((nbEcrits = write(sSocket,data,strlen(data))) ==-1) 
+
+	if ((nbEcrits = write(sSocket,messagePlusEntete,taille)) ==-1) 
 	{ 
 		perror("Erreur de Send"); 
 		close(sSocket);
@@ -146,14 +152,34 @@ int Send(int sSocket,char* data,int taille) {
 
 }
 
-int Receive(int sSocket,char* data) {
+int Receive(int sSocket,char* data) 
+{
 	int nbLus;
+	char bufferEntete[5];
+	char bufferData[100];
+	int tailleData;
 
-	 if ((nbLus = read(sSocket, data, strlen(data)))==-1)
-	 {
-	 	perror("Erreur de receive"); 
-	 	close(sSocket);
+	printf("devant 1 read\n");
+	if((nbLus = read(sSocket, bufferEntete, 4))==-1)
+	{
+		perror("Erreur de receive"); 
+		close(sSocket);
 		exit(1);  
-	 }
+	}
+	bufferEntete[5] = '\0';
+
+
+	tailleData=atoi(bufferEntete);
+	
+	printf("devant 2 read\n");
+	if((nbLus = read(sSocket, bufferData, tailleData))==-1)
+	{
+		perror("Erreur de receive"); 
+		close(sSocket);
+		exit(1);  
+	}
+	strcpy(data, bufferData);
+
+
 	return nbLus;
 }

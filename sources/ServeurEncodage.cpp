@@ -160,6 +160,31 @@ void* FctThreadClient(void* p)
 		printf("\t[THREAD %p] Je m'occupe de la socket %d\n", pthread_self(),sService); 
 
 		//TraitementConnexion(sService); 
+
+		//teste Receive
+		char buffer[100]; 
+		int nbLus; 
+
+		if ((nbLus = Receive(sService,buffer)) < 0) 
+		{ 
+			perror("Erreur de Receive dans Serveur"); 
+			close(sService); 
+			close(sEcoute); 
+			exit(1); 
+		} 
+
+		printf("NbLus = %d\n",nbLus); 
+		printf("Lu    = -- %s --\n",buffer); 
+		strcat(buffer, "[Serveur]");
+		int nbEnvoye;
+		if((nbEnvoye=Send(sService, buffer, strlen(buffer)))==-1)
+		{
+			perror("Erreur de send dans Serveur"); 
+			close(sService); 
+			close(sEcoute); 
+			exit(1); 
+		}
+		printf("serveur apres send()\n");
 	} 
 } 
 
