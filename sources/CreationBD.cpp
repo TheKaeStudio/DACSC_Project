@@ -88,6 +88,17 @@ int main(int argc,char *argv[])
     finish_with_error(connexion);
   }
 
+    // Supprimer la table users si elle existe déjà
+  if (mysql_query(connexion, "DROP TABLE IF EXISTS users;")) {
+    finish_with_error(connexion);
+  }
+
+    // Supprimer la table clients si elle existe déjà
+  if (mysql_query(connexion, "DROP TABLE IF EXISTS clients;")) {
+    finish_with_error(connexion);
+  }
+
+
   // Creation de la table authors
   printf("Creation de la table authors...\n");
   if (mysql_query(connexion,"CREATE TABLE authors ("
@@ -110,7 +121,7 @@ int main(int argc,char *argv[])
   printf("Creation de la table subjects...\n");
   if (mysql_query(connexion,"CREATE TABLE users ("
                       "id INT(4) AUTO_INCREMENT PRIMARY KEY,"
-                      "identifiantVARCHAR(20), "
+                      "identifiant VARCHAR(20), "
                       "passeword VARCHAR(20));")) {
     finish_with_error(connexion);
   }
@@ -131,6 +142,20 @@ int main(int argc,char *argv[])
                        "FOREIGN KEY (subject_id) REFERENCES subjects(id));")) {
     finish_with_error(connexion);
   }
+
+
+   // Ajout de tuples dans la table clients
+  printf("Creation de la table clients...\n");
+  if (mysql_query(connexion,"CREATE TABLE clients ("
+                    "id INT(4) AUTO_INCREMENT PRIMARY KEY, "
+                    "clientId INT(6), "
+                    "last_name VARCHAR(20), "
+                    "first_name VARCHAR(20), "
+                    "adress VARCHAR(50));")) {
+    finish_with_error(connexion);
+  }
+
+
 
   // Ajout de tuples dans la table authors
   printf("Ajout de %d auteurs la table authors...\n",nbAuthors);

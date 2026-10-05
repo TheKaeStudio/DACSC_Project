@@ -12,7 +12,7 @@
 #include <cerrno>
 #include <setjmp.h>
 #include <errno.h>
-
+#include <mysql.h>
 #include <signal.h> 
 #include "TCP.h"
 #define FichierNom "FConfigServeur.txt"
@@ -29,15 +29,23 @@ void HandlerSIGINT(int s);
 void TraitementConnexion(int sService); 
 void* FctThreadClient(void* p); 
 
-pthread_mutex_t mutexSocketsAcceptees; 
+pthread_mutex_t mutexSocketsAcceptees ; 
 pthread_cond_t  condSocketsAcceptees; 
 
+MYSQL* connexion;
 void* thread_function(void* arg);
 
 int main() 
 {
 	char buffer[10];
-	
+	// Connection à la BD
+    connexion = mysql_init(NULL);
+    if (mysql_real_connect(connexion,"localhost","Student","PassStudent1_","PourStudent",0,0,0) == NULL)
+    {
+      fprintf(stderr,"(SERVEUR) Erreur de connexion à la base de données...\n");
+      exit(1);  
+    }
+
 	FILE *fp = fopen(FichierNom, "r");
 
 	if (fp == NULL) {
@@ -49,7 +57,7 @@ int main()
 	fscanf(fp, "%d", &NB_THREADS_POOL);
 
 	printf("Port = %d\n", PORT_ENCODING);
-	printf("Autre valeur = %d\n", NB_THREADS_POOL);
+	printf("nombre de threads = %d\n", NB_THREADS_POOL);
 
 	fclose(fp);
 

@@ -8,7 +8,8 @@
 int sClient; 
 void HandlerSIGINT(int s); 
 void Echange(char* requete, char* reponse); 
-
+bool OBEP_Login(const char* user,const char* password);
+void OBEP_Logout();
 
 int main(int argc,char* argv[]) 
 { 
@@ -86,4 +87,71 @@ void HandlerSIGINT(int s)
 	close(sClient);
 
 	exit(0);
+}
+/*********************************Echange*****************************/
+void Echange(char* requete, char* reponse)
+{
+	int nbLus, nbLus;
+
+	if ((nbEcrits = Send(sClient,requete,strlen(requete))) == -1) 
+	{ 
+		perror("Erreur de Send"); 
+		close(sClient); 
+		exit(1); 
+	}
+
+	// ***** Attente de la reponse ************************** 
+	  
+	if ((nbLus = Receive(sClient,reponse)) < 0) 
+	{ 
+	    perror("Erreur de Receive"); 
+	    close(sClient); 
+	    exit(1); 
+	}
+
+	if (nbLus == 0) 
+	{ 
+	    printf("Serveur arrete, pas de reponse reçue...\n"); 
+	    close(sClient); 
+	    exit(1); 
+	} 
+
+	reponse[nbLus] = 0;
+}
+
+
+/********************OBEP_Login*************************/
+
+bool OBEP_Login(const char* user,const char* password)
+{
+	char requete[200];
+	char reponse[200];
+	if(user == NULL || password ==NULL)
+	{
+		return false;
+	}
+
+	sprintf(requete, "LOGIN#%s#%s", user, password);
+	Echange(requete, reponse);
+
+	// ***** Parsing de la réponse ************************** 
+	char *ptr = strtok(reponse,"#"); // entête = LOGIN (normalement...) 
+	ptr = strtok(NULL,"#"); // statut = ok ou ko 
+	if (strcmp(ptr,"ok") == 0) printf("Login OK.\n"); 
+	else 
+	{ 
+		ptr = strtok(NULL,"#"); // raison du ko 
+		printf("Erreur de login: %s\n",ptr); 
+		onContinue = false; 
+	} 
+	return onContinue;
+
+}
+
+/**************************OBEP_Logout************************************/
+void OBEP_Logout()
+{
+	char requete[200];
+	sprintf(requete, "LOGOUT#%D",ClientSocket);
+	Echange(requete, reponse);
 }

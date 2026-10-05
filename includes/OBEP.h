@@ -35,7 +35,7 @@ typedef struct {
 
 bool OBEP(char* requete, char* reponse, int socket);
 
-bool OBEP_Login(const char* user, const char* password);
+bool OBEP_Login(const char* identifiant, const char* password);
 
 bool OBEP_Logout(int socket);
 
