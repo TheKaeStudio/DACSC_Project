@@ -186,7 +186,7 @@ bool OBEP_Login(const char* identifiant,const char* password)
 	MYSQL_RES  *resultat;
 	char requete[200];
 
-	sprintf(requete,"select id from users where lower(identifiant) like lower('%s') and lower(password) like lower('%s')", identifiant, password);
+	sprintf(requete,"select id from employees where lower(identifiant) like lower('%s') and lower(password) like lower('%s')", identifiant, password);
 
 	if (mysql_query(connexion, requete))
     {
@@ -210,7 +210,7 @@ bool OBEP_Login(const char* identifiant,const char* password)
 		 mysql_free_result(resultat);
 		 return true;
 	}
-	sprintf(requete, "INSERT INTO users VALUES(NULL, '%s', '%s')", identifiant, password );
+	sprintf(requete, "INSERT INTO employees VALUES(NULL, '%s', '%s')", identifiant, password );
 
 	if(mysql_query(connexion, requete))
 	{
@@ -227,6 +227,7 @@ bool OBEP_Login(const char* identifiant,const char* password)
 
 	return false;
 }
+/////////////////////////////////////
 bool OBEP_Logout(int socket)
 {
 	
@@ -238,7 +239,7 @@ bool OBEP_Logout(int socket)
 	return false;
 
 }
-
+/////////////////////////////////////////////////////////
 int OBEP_GET_AUTHORS(Author authors[], int maxAuthors)
 {
 	MYSQL_RES *resultat;
@@ -281,6 +282,7 @@ int OBEP_GET_AUTHORS(Author authors[], int maxAuthors)
 int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects)
 {
 	MYSQL_RES *resultat;
+	MYSQL_ROW row;
 	char requete[200];
 
 	sprintf(requete, "select * from subjects");
@@ -300,7 +302,7 @@ int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects)
 	}
 	
 
-	MYSQL_ROW row;
+	
 	int i=0;
 	while ((row = mysql_fetch_row(resultat)) != NULL && i < maxSubjects)
 	{

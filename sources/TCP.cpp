@@ -131,55 +131,86 @@ int ClientSocket(char* ipServeur,int portServeur)
 	return sClient;
 }
 
-int Send(int sSocket,char* data,int taille) {
+int Send(int sSocket, char *data, int taille)
+{
+    int nbEcrits;
+    int total = 0;
 
-	int nbEcrits; 
-	char messagePlusEntete[taille + 5];
-	sprintf(messagePlusEntete,"%04d", taille);
-	strcat(messagePlusEntete, data);
-	printf("messagePlusEntete %s\n", messagePlusEntete);
-	taille=strlen(messagePlusEntete);
-	
+    char messagePlusEntete[taille + 5];
 
-	if ((nbEcrits = write(sSocket,messagePlusEntete,taille)) ==-1) 
-	{ 
-		perror("Erreur de Send"); 
-		close(sSocket);
-		exit(1); 
-	} 
-		
-	return nbEcrits; 
+    sprintf(messagePlusEntete, "%04d", taille);
+    strcat(messagePlusEntete, data);
 
+    printf("messagePlusEntete = %s\n", messagePlusEntete);
+
+    int tailleMessage = taille + 4;
+
+    while (total < tailleMessage)
+    {
+        nbEcrits = write(sSocket,
+                         messagePlusEntete + total,
+                         tailleMessage - total);
+
+        if (nbEcrits <= 0)
+        {
+            perror("Erreur de Send");
+            close(sSocket);
+            exit(1);
+        }
+
+        total += nbEcrits;
+    }
+
+    return total;
 }
 
-int Receive(int sSocket,char* data) 
+int Receive(int sSocket, char *data)
 {
-	int nbLus;
-	char bufferEntete[5];
-	char bufferData[100];
-	int tailleData;
+    int nbLus;
+    int total = 0;
+    int tailleData;
 
-	printf("devant 1 read\n");
-	if((nbLus = read(sSocket, bufferEntete, 4))==-1)
-	{
-		perror("Erreur de receive"); 
-		close(sSocket);
-		exit(1);  
-	}
-	bufferEntete[5] = '\0';
+    char bufferEntete[5];
 
+    // Lire  les 4 caractères de l'entête
+    while (total < 4)
+    {
+        nbLus = read(sSocket, bufferEntete + total, 4 - total);
 
-	tailleData=atoi(bufferEntete);
-	
-	printf("devant 2 read\n");
-	if((nbLus = read(sSocket, bufferData, tailleData))==-1)
-	{
-		perror("Erreur de receive"); 
-		close(sSocket);
-		exit(1);  
-	}
-	strcpy(data, bufferData);
+        if (nbLus <= 0)
+        {
+            perror("Erreur de receive");
+            close(sSocket);
+            exit(1);
+        }
 
+        total += nbLus;
+    }
 
-	return nbLus;
+    bufferEntete[4] = '\0';
+
+    tailleData = atoi(bufferEntete);
+
+    total = 0;
+
+    // Lire  tailleData caractères
+    while (total < tailleData)
+    {
+        nbLus = read(sSocket,
+                     data + total,
+                     tailleData - total);
+
+        if (nbLus <= 0)
+        {
+            perror("Erreur de receive");
+            close(sSocket);
+            exit(1);
+        }
+
+        total += nbLus;
+    }
+
+    data[tailleData] = '\0';
+
+    return tailleData;
 }

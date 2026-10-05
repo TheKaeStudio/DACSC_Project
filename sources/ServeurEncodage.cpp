@@ -15,6 +15,7 @@
 #include <mysql.h>
 #include <signal.h> 
 #include "TCP.h"
+#include "OBEP.h"
 #define FichierNom "FConfigServeur.txt"
 
 
@@ -181,9 +182,7 @@ void* FctThreadClient(void* p)
 			exit(1); 
 		} 
 
-		printf("NbLus = %d\n",nbLus); 
-		printf("Lu    = -- %s --\n",buffer); 
-		strcat(buffer, "[Serveur]");
+		
 		int nbEnvoye;
 		if((nbEnvoye=Send(sService, buffer, strlen(buffer)))==-1)
 		{
@@ -211,6 +210,50 @@ void HandlerSIGINT(int s)
 	}
 	 
 	pthread_mutex_unlock(&mutexSocketsAcceptees); 
-	//OBEP_Close(); 
+	OBEP_Close(); 
 	exit(0); 
 } 
+
+void TraitementConnexion(int sService)
+{
+	char requete[200], reponse[200]; 
+	int nbLus, nbEcrits; 
+	bool onContinue = true;
+
+	while(onContinue)
+	{
+		if((nbLus = Receive(sService, requete))<0)
+		{
+			perror("Erreur Receive");
+			close(sService);
+			HandlerSIGINT(0);
+		}
+
+		// ***** Fin de connexion ? ***************** 
+		if (nbLus == 0) 
+		{ 
+			printf("\t[THREAD %p] Fin de connexion du client.\n",pthread_self()); 
+			close(sService); 
+			return; 
+		} 
+		requete[nbLus] = 0; 
+
+		printf("\t[THREAD %p] Requete recue = %s\n",pthread_self(),requete); 
+
+		// ***** Traitement de la requete *********** 
+		onContinue = OBEP(requete,reponse,sService); 
+		
+		// ***** Envoi de la reponse **************** 
+		if ((nbEcrits = Send(sService,reponse,strlen(reponse))) < 0) 
+		{ 
+		perror("Erreur de Send"); 
+		close(sService); 
+		HandlerSIGINT(0); 
+		} 
+		printf("\t[THREAD %p] Reponse envoyee = %s\n",pthread_self(),reponse); 
+		if (!onContinue)  
+		printf("\t[THREAD %p] Fin de connexion de la socket 
+		%d\n",pthread_self(),sService); 
+
+	}
+}

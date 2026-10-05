@@ -88,8 +88,8 @@ int main(int argc,char *argv[])
     finish_with_error(connexion);
   }
 
-    // Supprimer la table users si elle existe déjà
-  if (mysql_query(connexion, "DROP TABLE IF EXISTS users;")) {
+    // Supprimer la table employees si elle existe déjà
+  if (mysql_query(connexion, "DROP TABLE IF EXISTS employees;")) {
     finish_with_error(connexion);
   }
 
@@ -117,9 +117,9 @@ int main(int argc,char *argv[])
     finish_with_error(connexion);
   }
 
-  // Creation de la table users
+  // Creation de la table employees
   printf("Creation de la table subjects...\n");
-  if (mysql_query(connexion,"CREATE TABLE users ("
+  if (mysql_query(connexion,"CREATE TABLE employees ("
                       "id INT(4) AUTO_INCREMENT PRIMARY KEY,"
                       "identifiant VARCHAR(20), "
                       "passeword VARCHAR(20));")) {
