@@ -13,6 +13,7 @@ int  estPresent(int socket);
 void ajoute(int socket); 
 void retire(int socket); 
 pthread_mutex_t mutexClients = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexBD = PTHREAD_MUTEX_INITIALIZER;
 extern MYSQL *connexion;
 
 //***** Parsing de la requete et creation de la reponse ************* 
@@ -153,7 +154,7 @@ bool OBEP(char* requete, char* reponse,int socket) //serveur l'appel
 		int stockQuantity = atoi(strtok(NULL, "#"));
 		float price = strtof(strtok(NULL, "#"), NULL);
 		int publishYear = atoi(strtok(NULL, "#"));
-        if (name == NULL)
+        if (title == NULL)
         {
             sprintf(reponse, "ADD_BOOK#ko#Parametres manquants");
             return false;
@@ -187,7 +188,7 @@ bool OBEP_Login(const char* identifiant,const char* password)
 	char requete[200];
 
 	sprintf(requete,"select id from employees where lower(identifiant) like lower('%s') and lower(password) like lower('%s')", identifiant, password);
-
+	pthread_mutex_lock(&mutexBD);
 	if (mysql_query(connexion, requete))
     {
         fprintf(stderr, "Erreur mysql : %s\n",
@@ -219,15 +220,13 @@ bool OBEP_Login(const char* identifiant,const char* password)
 
         return false;
 	}
+	mysql_free_result(resultat);
+    pthread_mutex_unlock(&mutexBD);
+
 	return true;
-    mysql_free_result(resultat);
-
-
-
-
-	return false;
+    
 }
-/////////////////////////////////////
+////////////////////////////////////////////////////////////
 bool OBEP_Logout(int socket)
 {
 	
@@ -248,6 +247,7 @@ int OBEP_GET_AUTHORS(Author authors[], int maxAuthors)
 
 	 sprintf(requete,"SELECT id, last_name, first_name FROM authors");
 
+	pthread_mutex_lock(&mutexBD);
 	if(mysql_query(connexion, requete))
 	{
 		fprintf(stderr, "Erreur mysql : %s\n",
@@ -275,9 +275,11 @@ int OBEP_GET_AUTHORS(Author authors[], int maxAuthors)
 	}
 
 	mysql_free_result(resultat);
+	pthread_mutex_unlock(&mutexBD);
 
 	return i;
 }
+//////////////////////////////////////////////////////////////////
 
 int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects)
 {
@@ -286,7 +288,7 @@ int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects)
 	char requete[200];
 
 	sprintf(requete, "select * from subjects");
-
+	pthread_mutex_lock(&mutexBD);
 	if(mysql_query(connexion, requete))
 	{
 		fprintf(stderr, "Erreur mysql : %s\n",
@@ -295,7 +297,7 @@ int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects)
         return -1;
 	}
 	resultat= mysql_store_result(connexion);
-	if(resultat==null)
+	if(resultat==NULL)
 	{
 		fprintf(stderr, "Erreur mysql %s\n", mysql_error(connexion));
 		return -1;
@@ -313,18 +315,21 @@ int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects)
 	}
 
 	mysql_free_result(resultat);
-
+	pthread_mutex_unlock(&mutexBD);
 	return i;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////
 
 int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName)
 {
 	MYSQL_RES *resultat;
+	MYSQL_ROW row;
 	char requete[200];
 	int id;
 	 sprintf(requete, "SELECT id FROM authors WHERE lower(last_name) like lower('%s') AND lower(first_name) = lower('%s')",
             lastName, firstName);
+	 pthread_mutex_lock(&mutexBD);
 	if(mysql_query(connexion, requete))
 	{
 		fprintf(stderr, "Erreur mysql : %s\n",
@@ -367,19 +372,21 @@ int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName)
 	id=(int)mysql_insert_id(connexion);
 
 	mysql_free_result(resultat);
-
+	pthread_mutex_unlock(&mutexBD);
 	return id;
 
 }
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int OBEP_ADD_SUBJECT(const char* nom)
 {
 	MYSQL_RES *resultat;
+	MYSQL_ROW row;
 	char requete[200];
 	int id;
 	 sprintf(requete, "SELECT id FROM subjects WHERE lower(name) like lower('%s')",
             nom);
+	 pthread_mutex_lock(&mutexBD);
 	if(mysql_query(connexion, requete))
 	{
 		fprintf(stderr, "Erreur mysql : %s\n",
@@ -422,6 +429,7 @@ int OBEP_ADD_SUBJECT(const char* nom)
 	id=(int)mysql_insert_id(connexion);
 
 	mysql_free_result(resultat);
+	pthread_mutex_lock(&mutexBD);
 
 	return id;
 }
@@ -430,11 +438,13 @@ int OBEP_ADD_SUBJECT(const char* nom)
 int OBEP_ADD_BOOK(int authorId,int subjectId,const char* title, const char* isbn, int pageCount,int stockQuantity, float price,int publishYear)
 {
 	MYSQL_RES *resultat;
+	MYSQL_ROW row;
 	char requete[200];
 	int id;
 
 
 	sprintf(requete,"select id from books where lower(title) like lower(%s) and lower(isbn) like lower(%s) and author_id = (%d)", title, isbn, authorId);
+	pthread_mutex_lock(&mutexBD);
 	if(mysql_query(connexion, requete))
 	{
 		fprintf(stderr, "Erreur mysql : %s\n",
@@ -472,8 +482,16 @@ int OBEP_ADD_BOOK(int authorId,int subjectId,const char* title, const char* isbn
     
 
 	mysql_free_result(resultat);
-
+	pthread_mutex_unlock(&mutexBD);
 	return id;
+}
+
+void OBEP_Close()
+{
+	pthread_mutex_lock(&mutexClients); 
+	for (int i=0 ; i<nbclients ; i++) 
+	close(clients[i]); 
+	pthread_mutex_unlock(&mutexClients);
 }
 
 

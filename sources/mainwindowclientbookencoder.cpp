@@ -4,13 +4,25 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <iostream>
+#include "OBEP_Client.h"
+
 using namespace std;
 
 MainWindowClientBookEncoder::MainWindowClientBookEncoder(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindowClientBookEncoder)
 {
+    cout<<"je suis dans le constructeur";
     ui->setupUi(this);
+    if (!OBEP_Connect("0.0.0.0", 50000))
+    {
+        this->dialogError(
+            "Connexion",
+            "Impossible de se connecter au serveur."
+        );
+    }
+
+    this->logoutOk();
     ::close(2);
 
     //this->setFixedSize(1068, 301);
@@ -126,6 +138,8 @@ void MainWindowClientBookEncoder::addTupleTableBooks(int id,
     item->setTextAlignment(Qt::AlignCenter);
     item->setText(QString::number(stockQuantity));
     ui->tableWidgetEncodedBooks->setItem(nb-1,8,item);
+
+    
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,6 +151,7 @@ void MainWindowClientBookEncoder::clearTableBooks() {
 ///// Fonctions utiles des comboboxes (ne pas modifier) //////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindowClientBookEncoder::addComboBoxAuthors(string author){
+
     ui->comboBoxAuthors->addItem(QString::fromStdString(author));
 }
 
@@ -230,12 +245,14 @@ int MainWindowClientBookEncoder::dialogInputInt(const string& title,const string
 ///// Fonctions gestion des boutons et items de menu (TO DO) /////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindowClientBookEncoder::on_pushButtonAddAuthor_clicked() {
+      
     string lastName = this->dialogInputText("Nouvel auteur","Nom ?");
     string firstName = this->dialogInputText("Nouvel auteur","Prénom ?");
     string birthDate = this->dialogInputText("Nouvel auteur","Date de naissance (yyyy-mm-dd) ?");
     cout << "Nom : " << lastName << endl;
     cout << "Prénom : " << firstName << endl;
     cout << "Date de naissance : " << birthDate << endl;
+
 }
 
 void MainWindowClientBookEncoder::on_pushButtonAddSubject_clicked() {
@@ -244,15 +261,49 @@ void MainWindowClientBookEncoder::on_pushButtonAddSubject_clicked() {
 }
 
 void MainWindowClientBookEncoder::on_pushButtonAddBook_clicked() {
-    cout << "title = " << this->getTitle() << endl;
-    cout << "Isbn = " << this->getIsbn() << endl;
-    cout << "PageCount = " << this->getPageCount() << endl;
-    cout << "Price = " << this->getPrice() << endl;
-    cout << "PublishYear = " << this->getPublishYear() << endl;
-    cout << "Stock = " << this->getStockQuantity() << endl;
+    int authorId;
+    int subjectId;
+    string title;
+    string isbn;
+    int pageCount;
+    float price;
+    int stockQuantity;
+    int publishYear;
+    authorId= ui->comboBoxAuthors->currentData().toInt();
+    subjectId = ui->comboBoxSubjects->currentData().toInt();;
+    title = this->getTitle();
+    isbn = this->getIsbn();
+    pageCount =  this->getPageCount();
+    stockQuantity = this->getStockQuantity();
+    price = this->getPrice();
+    publishYear = this->getPublishYear();
+   
+    
+    cout << "title = " << title << endl;
+    cout << "Isbn = " << isbn << endl;
+    cout << "PageCount = " << pageCount<< endl;
+    cout << "Price = " << price << endl;
+    cout << "PublishYear = " << price << endl;
+    cout << "Stock = " << publishYear << endl;
 
     cout << "selection auteur = " << this->getSelectionAuthor() << endl;
     cout << "selection sujet  = " << this->getSelectionSubject() << endl;
+
+
+
+    int id;
+     
+    id = OBEP_add_book(authorId, subjectId, title.c_str(), isbn.c_str(),pageCount,stockQuantity, price, publishYear);
+
+    if(id!=-1)
+    {
+        this->dialogError("ADD_BOOK", "Le livre n' a pas été ajouté.");
+    }
+    else
+    {
+        this->dialogMessage("ADD_BOOK", "livre ajouter");
+    }
+    
 }
 
 void MainWindowClientBookEncoder::on_pushButtonClear_clicked() {
@@ -267,11 +318,32 @@ void MainWindowClientBookEncoder::on_pushButtonClear_clicked() {
 void MainWindowClientBookEncoder::on_actionLogin_triggered() {
     string login = this->dialogInputText("Entrée en session","Login ?");
     string password = this->dialogInputText("Entrée en session","Password ?");
-    this->loginOk();
+
+    if(OBEP_Login(login.c_str(), password.c_str()))
+    {
+        this->loginOk();
+        this->dialogMessage("Connexion","Connexion réussie !");
+    }
+    else
+    {
+        this->dialogError("Connexion", "Login ou mot de passe incorrect.");
+    }
+    
 }
 
 void MainWindowClientBookEncoder::on_actionLogout_triggered() {
-    this->logoutOk();
+
+    if(OBEP_Logout())
+    {
+        this->logoutOk();
+        this->dialogMessage("Logout", "Deconnexion");
+    }
+    else
+    {
+        this->dialogError("Logout", "Erreur de deconnexion");
+    }
+
+    
 }
 
 void MainWindowClientBookEncoder::on_actionQuitter_triggered(){

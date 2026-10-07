@@ -1,12 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 
 # ============================================================
-# Projet
+# PROJET
 # ============================================================
 
 project(AppGestionnaire)
 
-# Standard C++
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -17,7 +16,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
 
 # ============================================================
-# Répertoires des fichiers .h
+# RÉPERTOIRES DES HEADERS
 # ============================================================
 
 include_directories(
@@ -26,22 +25,34 @@ include_directories(
 )
 
 # ============================================================
-# Répertoire des bibliothèques MySQL
+# RÉPERTOIRE DES BIBLIOTHÈQUES
 # ============================================================
 
 link_directories(
     /usr/lib64/mysql
 )
 
-
 # ============================================================
-# INTERFACE GRAPHIQUE
+# CLIENT QT
 # ============================================================
 
 add_executable(App
+
+    # Programme principal Qt
     sources/main.cpp
+
+    # Fenêtre principale
     sources/mainwindowclientbookencoder.cpp
-    sources/moc_mainwindowclientbookencoder.cpp)
+
+    # MOC généré pour Qt
+    sources/moc_mainwindowclientbookencoder.cpp
+
+    # OBEP côté client
+    sources/OBEP_Client.cpp
+
+    # TCP
+    sources/TCP.cpp
+)
 
 target_include_directories(App PRIVATE
     ${PROJECT_SOURCE_DIR}/includes
@@ -53,32 +64,24 @@ target_link_libraries(App
     Qt5::Core
 )
 
-
-# ============================================================
-# CLIENT ENCODAGE
-# ============================================================
-
-add_executable(ClientEncodage
-    sources/ClientEncodage.cpp
-    sources/TCP.cpp
-)
-
-target_link_libraries(ClientEncodage
-    Qt5::Core
-    Qt5::Gui
-    Qt5::Widgets
-)
-
 # ============================================================
 # SERVEUR ENCODAGE
 # ============================================================
 
 add_executable(ServeurEncodage
+
     sources/ServeurEncodage.cpp
     sources/TCP.cpp
+    sources/OBEP.cpp
+)
+
+target_include_directories(ServeurEncodage PRIVATE
+    ${PROJECT_SOURCE_DIR}/includes
+    /usr/include/mysql
 )
 
 target_link_libraries(ServeurEncodage
+
     mysqlclient
     pthread
     z
@@ -90,14 +93,21 @@ target_link_libraries(ServeurEncodage
 )
 
 # ============================================================
-# CREATION DE LA BASE DE DONNEES
+# CRÉATION DE LA BASE DE DONNÉES
 # ============================================================
 
 add_executable(CreationBD
+
     sources/CreationBD.cpp
 )
 
+target_include_directories(CreationBD PRIVATE
+    ${PROJECT_SOURCE_DIR}/includes
+    /usr/include/mysql
+)
+
 target_link_libraries(CreationBD
+
     mysqlclient
     pthread
     z

@@ -130,19 +130,6 @@ App/fast:
 .PHONY : App/fast
 
 #=============================================================================
-# Target rules for targets named ClientEncodage
-
-# Build rule for target.
-ClientEncodage: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ClientEncodage
-.PHONY : ClientEncodage
-
-# fast build rule for target.
-ClientEncodage/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ClientEncodage.dir/build.make CMakeFiles/ClientEncodage.dir/build
-.PHONY : ClientEncodage/fast
-
-#=============================================================================
 # Target rules for targets named ServeurEncodage
 
 # Build rule for target.
@@ -168,30 +155,6 @@ CreationBD/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/CreationBD.dir/build.make CMakeFiles/CreationBD.dir/build
 .PHONY : CreationBD/fast
 
-sources/ClientEncodage.o: sources/ClientEncodage.cpp.o
-.PHONY : sources/ClientEncodage.o
-
-# target to build an object file
-sources/ClientEncodage.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ClientEncodage.dir/build.make CMakeFiles/ClientEncodage.dir/sources/ClientEncodage.cpp.o
-.PHONY : sources/ClientEncodage.cpp.o
-
-sources/ClientEncodage.i: sources/ClientEncodage.cpp.i
-.PHONY : sources/ClientEncodage.i
-
-# target to preprocess a source file
-sources/ClientEncodage.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ClientEncodage.dir/build.make CMakeFiles/ClientEncodage.dir/sources/ClientEncodage.cpp.i
-.PHONY : sources/ClientEncodage.cpp.i
-
-sources/ClientEncodage.s: sources/ClientEncodage.cpp.s
-.PHONY : sources/ClientEncodage.s
-
-# target to generate assembly for a file
-sources/ClientEncodage.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ClientEncodage.dir/build.make CMakeFiles/ClientEncodage.dir/sources/ClientEncodage.cpp.s
-.PHONY : sources/ClientEncodage.cpp.s
-
 sources/CreationBD.o: sources/CreationBD.cpp.o
 .PHONY : sources/CreationBD.o
 
@@ -215,6 +178,54 @@ sources/CreationBD.s: sources/CreationBD.cpp.s
 sources/CreationBD.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/CreationBD.dir/build.make CMakeFiles/CreationBD.dir/sources/CreationBD.cpp.s
 .PHONY : sources/CreationBD.cpp.s
+
+sources/OBEP.o: sources/OBEP.cpp.o
+.PHONY : sources/OBEP.o
+
+# target to build an object file
+sources/OBEP.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ServeurEncodage.dir/build.make CMakeFiles/ServeurEncodage.dir/sources/OBEP.cpp.o
+.PHONY : sources/OBEP.cpp.o
+
+sources/OBEP.i: sources/OBEP.cpp.i
+.PHONY : sources/OBEP.i
+
+# target to preprocess a source file
+sources/OBEP.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ServeurEncodage.dir/build.make CMakeFiles/ServeurEncodage.dir/sources/OBEP.cpp.i
+.PHONY : sources/OBEP.cpp.i
+
+sources/OBEP.s: sources/OBEP.cpp.s
+.PHONY : sources/OBEP.s
+
+# target to generate assembly for a file
+sources/OBEP.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ServeurEncodage.dir/build.make CMakeFiles/ServeurEncodage.dir/sources/OBEP.cpp.s
+.PHONY : sources/OBEP.cpp.s
+
+sources/OBEP_Client.o: sources/OBEP_Client.cpp.o
+.PHONY : sources/OBEP_Client.o
+
+# target to build an object file
+sources/OBEP_Client.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/App.dir/build.make CMakeFiles/App.dir/sources/OBEP_Client.cpp.o
+.PHONY : sources/OBEP_Client.cpp.o
+
+sources/OBEP_Client.i: sources/OBEP_Client.cpp.i
+.PHONY : sources/OBEP_Client.i
+
+# target to preprocess a source file
+sources/OBEP_Client.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/App.dir/build.make CMakeFiles/App.dir/sources/OBEP_Client.cpp.i
+.PHONY : sources/OBEP_Client.cpp.i
+
+sources/OBEP_Client.s: sources/OBEP_Client.cpp.s
+.PHONY : sources/OBEP_Client.s
+
+# target to generate assembly for a file
+sources/OBEP_Client.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/App.dir/build.make CMakeFiles/App.dir/sources/OBEP_Client.cpp.s
+.PHONY : sources/OBEP_Client.cpp.s
 
 sources/ServeurEncodage.o: sources/ServeurEncodage.cpp.o
 .PHONY : sources/ServeurEncodage.o
@@ -245,7 +256,7 @@ sources/TCP.o: sources/TCP.cpp.o
 
 # target to build an object file
 sources/TCP.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ClientEncodage.dir/build.make CMakeFiles/ClientEncodage.dir/sources/TCP.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/App.dir/build.make CMakeFiles/App.dir/sources/TCP.cpp.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ServeurEncodage.dir/build.make CMakeFiles/ServeurEncodage.dir/sources/TCP.cpp.o
 .PHONY : sources/TCP.cpp.o
 
@@ -254,7 +265,7 @@ sources/TCP.i: sources/TCP.cpp.i
 
 # target to preprocess a source file
 sources/TCP.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ClientEncodage.dir/build.make CMakeFiles/ClientEncodage.dir/sources/TCP.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/App.dir/build.make CMakeFiles/App.dir/sources/TCP.cpp.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ServeurEncodage.dir/build.make CMakeFiles/ServeurEncodage.dir/sources/TCP.cpp.i
 .PHONY : sources/TCP.cpp.i
 
@@ -263,7 +274,7 @@ sources/TCP.s: sources/TCP.cpp.s
 
 # target to generate assembly for a file
 sources/TCP.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ClientEncodage.dir/build.make CMakeFiles/ClientEncodage.dir/sources/TCP.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/App.dir/build.make CMakeFiles/App.dir/sources/TCP.cpp.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ServeurEncodage.dir/build.make CMakeFiles/ServeurEncodage.dir/sources/TCP.cpp.s
 .PHONY : sources/TCP.cpp.s
 
@@ -348,15 +359,17 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... App"
-	@echo "... ClientEncodage"
 	@echo "... CreationBD"
 	@echo "... ServeurEncodage"
-	@echo "... sources/ClientEncodage.o"
-	@echo "... sources/ClientEncodage.i"
-	@echo "... sources/ClientEncodage.s"
 	@echo "... sources/CreationBD.o"
 	@echo "... sources/CreationBD.i"
 	@echo "... sources/CreationBD.s"
+	@echo "... sources/OBEP.o"
+	@echo "... sources/OBEP.i"
+	@echo "... sources/OBEP.s"
+	@echo "... sources/OBEP_Client.o"
+	@echo "... sources/OBEP_Client.i"
+	@echo "... sources/OBEP_Client.s"
 	@echo "... sources/ServeurEncodage.o"
 	@echo "... sources/ServeurEncodage.i"
 	@echo "... sources/ServeurEncodage.s"

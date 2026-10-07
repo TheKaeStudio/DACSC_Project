@@ -3,6 +3,8 @@
 
 #define TAILLE_MAX_DATA 10000
 
+
+
 int ServerSocket(int port);
 int Accept(int sEcoute,char *ipClient);
 int ClientSocket(char* ipServeur,int portServeur);

@@ -168,7 +168,7 @@ void* FctThreadClient(void* p)
 		// Traitement de la connexion (consommation de la tâche) 
 		printf("\t[THREAD %p] Je m'occupe de la socket %d\n", pthread_self(),sService); 
 
-		//TraitementConnexion(sService); 
+		TraitementConnexion(sService); 
 
 		//teste Receive
 		char buffer[100]; 
@@ -246,14 +246,15 @@ void TraitementConnexion(int sService)
 		// ***** Envoi de la reponse **************** 
 		if ((nbEcrits = Send(sService,reponse,strlen(reponse))) < 0) 
 		{ 
-		perror("Erreur de Send"); 
-		close(sService); 
-		HandlerSIGINT(0); 
+			perror("Erreur de Send"); 
+			close(sService); 
+			HandlerSIGINT(0); 
 		} 
 		printf("\t[THREAD %p] Reponse envoyee = %s\n",pthread_self(),reponse); 
+
+		printf("nbLus : %d\n");
 		if (!onContinue)  
-		printf("\t[THREAD %p] Fin de connexion de la socket 
-		%d\n",pthread_self(),sService); 
+			printf("\t[THREAD %p] Fin de connexion de la socket %d\n",pthread_self(),sService); 
 
 	}
 }

@@ -1,6 +1,10 @@
 file(REMOVE_RECURSE
   "App"
   "App.pdb"
+  "CMakeFiles/App.dir/sources/OBEP_Client.cpp.o"
+  "CMakeFiles/App.dir/sources/OBEP_Client.cpp.o.d"
+  "CMakeFiles/App.dir/sources/TCP.cpp.o"
+  "CMakeFiles/App.dir/sources/TCP.cpp.o.d"
   "CMakeFiles/App.dir/sources/main.cpp.o"
   "CMakeFiles/App.dir/sources/main.cpp.o.d"
   "CMakeFiles/App.dir/sources/mainwindowclientbookencoder.cpp.o"

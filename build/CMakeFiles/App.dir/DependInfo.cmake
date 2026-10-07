@@ -8,6 +8,8 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/home/student/Documents/DACSC_Project/sources/OBEP_Client.cpp" "CMakeFiles/App.dir/sources/OBEP_Client.cpp.o" "gcc" "CMakeFiles/App.dir/sources/OBEP_Client.cpp.o.d"
+  "/home/student/Documents/DACSC_Project/sources/TCP.cpp" "CMakeFiles/App.dir/sources/TCP.cpp.o" "gcc" "CMakeFiles/App.dir/sources/TCP.cpp.o.d"
   "/home/student/Documents/DACSC_Project/sources/main.cpp" "CMakeFiles/App.dir/sources/main.cpp.o" "gcc" "CMakeFiles/App.dir/sources/main.cpp.o.d"
   "/home/student/Documents/DACSC_Project/sources/mainwindowclientbookencoder.cpp" "CMakeFiles/App.dir/sources/mainwindowclientbookencoder.cpp.o" "gcc" "CMakeFiles/App.dir/sources/mainwindowclientbookencoder.cpp.o.d"
   "/home/student/Documents/DACSC_Project/sources/moc_mainwindowclientbookencoder.cpp" "CMakeFiles/App.dir/sources/moc_mainwindowclientbookencoder.cpp.o" "gcc" "CMakeFiles/App.dir/sources/moc_mainwindowclientbookencoder.cpp.o.d"
