@@ -20,6 +20,7 @@ extern MYSQL *connexion;
 
 bool OBEP(char* requete, char* reponse,int socket) //serveur l'appel
 {
+	printf("%s\n", requete);
 	// ***** Récupération nom de la requete ***************** 
 	char *ptr = strtok(requete,"#"); 
 	if (ptr == NULL)
@@ -188,6 +189,7 @@ bool OBEP_Login(const char* identifiant,const char* password)
 	char requete[200];
 
 	sprintf(requete,"select id from employees where lower(identifiant) like lower('%s') and lower(password) like lower('%s')", identifiant, password);
+
 	pthread_mutex_lock(&mutexBD);
 	if (mysql_query(connexion, requete))
     {
@@ -196,6 +198,7 @@ bool OBEP_Login(const char* identifiant,const char* password)
 
         return false;
     }
+    printf("\nrequete sql envoyé\n");
 
     resultat = mysql_store_result(connexion);
 
@@ -205,8 +208,10 @@ bool OBEP_Login(const char* identifiant,const char* password)
 		fprintf(stderr, "Erreur mysql %s\n", mysql_error(connexion));
 		return false;
 	}
+	int nbTuple = mysql_num_rows(resultat);
+	printf("nbTuple %d\n", nbTuple);
 
-	if(mysql_num_rows(resultat)>0)
+	if(nbTuple>0)
 	{
 		 mysql_free_result(resultat);
 		 return true;

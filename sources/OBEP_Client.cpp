@@ -33,6 +33,7 @@ void Echange(char* requete, char* reponse)
     }
 
     // ***** Attente de la reponse ************************** 
+    printf("attend de la reponse\n");
       
     if ((nbLus = Receive(sClient,reponse)) < 0) 
     { 
@@ -41,6 +42,7 @@ void Echange(char* requete, char* reponse)
         exit(1); 
     }
 
+    printf("debloqué\n");
     if (nbLus == 0) 
     { 
         printf("Serveur arrete, pas de reponse reçue...\n"); 
@@ -49,6 +51,7 @@ void Echange(char* requete, char* reponse)
     } 
 
     reponse[nbLus] = '\0';
+    printf("reponse %s\n", reponse);
 }
 
 

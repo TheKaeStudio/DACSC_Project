@@ -122,7 +122,7 @@ int main(int argc,char *argv[])
   if (mysql_query(connexion,"CREATE TABLE employees ("
                       "id INT(4) AUTO_INCREMENT PRIMARY KEY,"
                       "identifiant VARCHAR(20), "
-                      "passeword VARCHAR(20));")) {
+                      "password VARCHAR(20));")) {
     finish_with_error(connexion);
   }
 

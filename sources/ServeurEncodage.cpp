@@ -171,7 +171,7 @@ void* FctThreadClient(void* p)
 		TraitementConnexion(sService); 
 
 		//teste Receive
-		char buffer[100]; 
+		/*char buffer[100]; 
 		int nbLus; 
 
 		if ((nbLus = Receive(sService,buffer)) < 0) 
@@ -190,7 +190,7 @@ void* FctThreadClient(void* p)
 			close(sService); 
 			close(sEcoute); 
 			exit(1); 
-		}
+		}*/
 		printf("serveur apres send()\n");
 	} 
 } 
