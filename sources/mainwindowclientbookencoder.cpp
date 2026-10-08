@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include <iostream>
 #include "OBEP_Client.h"
+#include "Model.h"
 
 using namespace std;
 
@@ -315,18 +316,90 @@ void MainWindowClientBookEncoder::on_pushButtonClear_clicked() {
     ui->spinBoxStockQuantity->setValue(0);
 }
 
-void MainWindowClientBookEncoder::on_actionLogin_triggered() {
+void MainWindowClientBookEncoder::on_actionLogin_triggered() 
+{
     string login = this->dialogInputText("Entrée en session","Login ?");
     string password = this->dialogInputText("Entrée en session","Password ?");
 
-    if(OBEP_Login(login.c_str(), password.c_str()))
+   
+
+    if (OBEP_Login(login.c_str(), password.c_str()))
     {
         this->loginOk();
-        this->dialogMessage("Connexion","Connexion réussie !");
+
+        this->dialogMessage(
+            "Connexion",
+            "Connexion réussie !"
+        );
+
+
+        int nbAuteur = OBEP_Get_nb_authors();
+
+        cout << "Nombre d'auteurs : " << nbAuteur << endl;
+
+        if (nbAuteur > 0)
+        {
+            Author* auteurs = new Author[nbAuteur];
+
+            int nb = OBEP_Get_authors( auteurs, nbAuteur);
+
+            if (nb >= 0)
+            {
+                for (int i = 0; i < nb; i++)
+                {
+                    cout << "ID : " << auteurs[i].id << endl;
+
+                    cout << "Nom : " << auteurs[i].lastName << endl;
+
+                    cout << "Prénom : "
+                         << auteurs[i].firstName << endl;
+
+                    string nomComplet = string(auteurs[i].firstName) + " " + string(auteurs[i].lastName);
+
+                    this->addComboBoxAuthors(nomComplet);
+                    cout<< "mis dans le tableau : "<< nomComplet <<endl;
+                }
+            }
+
+            delete[] auteurs;
+        }
+
+
+        // =========================
+        // SUJETS
+        // =========================
+
+        int nbSujet = OBEP_Get_nb_subjects();
+
+        cout << "Nombre de sujets : "<< nbSujet << endl;
+
+        if (nbSujet > 0)
+        {
+            Subject* sujets = new Subject[nbSujet];
+
+            int nb = OBEP_Get_subjets(sujets, nbSujet);
+            cout << "nb = "<< nb <<endl;
+           
+            for (int i = 0; i < nbSujet; i++)
+            {
+                cout << "ID : "<< sujets[i].id << endl;
+
+                cout << "Nom : " << sujets[i].name << endl;
+
+                this->addComboBoxSubjects( sujets[i].name);
+                cout << "mis dans le tableau"<<endl;
+            }
+    
+
+            delete[] sujets;
+        }
     }
     else
     {
-        this->dialogError("Connexion", "Login ou mot de passe incorrect.");
+        this->dialogError(
+            "Connexion",
+            "Login ou mot de passe incorrect."
+        );
     }
     
 }

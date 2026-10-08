@@ -120,30 +120,27 @@ bool OBEP_Logout()
 
 }
 
-/**************************OBEP_Get_authors************************************/
-int OBEP_Get_authors(Author authors[], int maxAuthors)
+/******************************************************************************/
+int OBEP_Get_nb_authors()
 {
     char requete[200];
-    char reponse[5000];
+    char reponse[200];
+    int nbAuthors;
 
-    sprintf(requete, "GET_AUTHORS");
-
+    sprintf(requete,"GET_AUTHORS_nb");
     Echange(requete, reponse);
-
     char *ptr = strtok(reponse, "#");
-
-    if (ptr == NULL || strcmp(ptr, "GET_AUTHORS") != 0)
+    if(ptr == NULL || strcmp(ptr, "GET_AUTHORS_nb") !=0)
     {
         return -1;
     }
-
     ptr = strtok(NULL, "#");
-
-    if (ptr == NULL || strcmp(ptr, "ok") != 0)
+    if(ptr == NULL || strcmp(ptr, "ok")!=0)
     {
         return -1;
     }
 
+    // nombre
     ptr = strtok(NULL, "#");
 
     if (ptr == NULL)
@@ -151,25 +148,112 @@ int OBEP_Get_authors(Author authors[], int maxAuthors)
         return -1;
     }
 
+    nbAuthors = atoi(ptr);
+
+    return nbAuthors;
+
+}
+
+
+/******************************************************************************/
+int OBEP_Get_nb_subjects()
+{
+    char requete[200];
+    char reponse[200];
+    int nbSubject;
+
+
+    sprintf(requete,"GET_SUBCJETS_nb");
+    Echange(requete, reponse);
+    char *ptr = strtok(reponse, "#");
+    if(ptr == NULL || strcmp(ptr, "GET_SUBJECTS_nb") !=0)
+    {
+        return -1;
+    }
+    ptr = strtok(NULL, "#");
+    if(ptr == NULL || strcmp(ptr, "ok")!=0)
+    {
+        return -1;
+    }
+
+    ptr = strtok(NULL, "#");
+    if (ptr == NULL)
+    {
+        return -1;
+    }
+
+    nbSubject = atoi(ptr);
+
+    return nbSubject;
+
+}
+
+
+/**************************OBEP_Get_authors************************************/
+int OBEP_Get_authors(Author authors[], int maxAuthors)
+{
+    char requete[200];
+    char reponse[5000];
+
+    sprintf(requete, "GET_AUTHORS#");
+
+    Echange(requete, reponse);
+
+    char *ptr = strtok(reponse, "#");
+    printf("OBEP_Get_authors : *ptr  = %s\n", ptr);
+
+
+    if (ptr == NULL || strcmp(ptr, "GET_AUTHORS") != 0)
+    {
+        return -1;
+    }
+
+    ptr = strtok(NULL, "#");
+    printf("OBEP_Get_authors : *ptr  = %s\n", ptr);
+    if (ptr == NULL || strcmp(ptr, "ok") != 0)
+    {
+        return -1;
+    }
+
+    ptr = strtok(NULL, "#");
+    printf("OBEP_Get_authors : *ptr  = %s\n", ptr);
+
+    if (ptr == NULL)
+    {
+        return -1;
+    }
+
     int nbAuthors = atoi(ptr);
+    printf("dans client nbAuthors = %d\n", nbAuthors);
 
     if (nbAuthors > maxAuthors)
     {
         nbAuthors = maxAuthors;
     }
 
+
     for (int i = 0; i < nbAuthors; i++)
     {
         ptr = strtok(NULL, "#");
-        if (ptr == NULL) return -1;
+        if (ptr == NULL)
+        {
+           break; 
+        } 
         authors[i].id = atoi(ptr);
 
         ptr = strtok(NULL, "#");
-        if (ptr == NULL) return -1;
+        if (ptr == NULL) 
+        {
+            break; 
+        }
         strcpy(authors[i].lastName, ptr);
 
         ptr = strtok(NULL, "#");
-        if (ptr == NULL) return -1;
+
+        if (ptr == NULL)
+        {
+           break;  
+        } 
         strcpy(authors[i].firstName, ptr);
     }
 
@@ -187,6 +271,7 @@ int OBEP_Get_subjets(Subject subjects[], int maxSubjects)
     sprintf(requete,"GET_SUBJECTS#");
     Echange(requete, reponse);
     char *ptr = strtok(reponse, "#");
+    printf("OBEP_Get_subjets : ptr = %s\n", ptr);
 
     if(ptr == NULL || strcmp(ptr, "GET_SUBJECTS")!=0)
     {
@@ -194,12 +279,13 @@ int OBEP_Get_subjets(Subject subjects[], int maxSubjects)
     }
 
     ptr = strtok(NULL, "#");
-
-    if(ptr == NULL || strcmp(ptr, "ko")!=0)
+    printf("OBEP_Get_subjets : ptr = %s\n", ptr);
+    if(ptr == NULL || strcmp(ptr, "ko")==0)
     {
         return -1;
     }
     ptr = strtok(NULL,"#");
+    printf("OBEP_Get_subjets : ptr = %s\n", ptr);
     if (ptr == NULL)
     {
         return -1;
@@ -216,7 +302,7 @@ int OBEP_Get_subjets(Subject subjects[], int maxSubjects)
         ptr= strtok(NULL, "#");
         if (ptr == NULL)
         {
-            return -1;
+            break;
         }
         subjects[i].id = atoi(ptr);
 
@@ -224,7 +310,7 @@ int OBEP_Get_subjets(Subject subjects[], int maxSubjects)
 
         if (ptr == NULL)
         {
-            return -1;
+            break;
         }
         strcpy(subjects[i].name, ptr);
 

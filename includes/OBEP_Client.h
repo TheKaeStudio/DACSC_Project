@@ -5,9 +5,17 @@
 #include "Model.h"
 
 void Echange(char* requete, char* reponse); 
+
 bool OBEP_Connect(char* ip, int port);
+
 bool OBEP_Login(const char* user,const char* password);
+
 bool OBEP_Logout();
+
+int OBEP_Get_nb_authors();
+
+int OBEP_Get_nb_subjects();
+
 int OBEP_Get_authors(Author authors[], int maxAuthors);
 
 int OBEP_Get_subjets(Subject subjects[], int maxSubjects);

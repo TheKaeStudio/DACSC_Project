@@ -170,27 +170,7 @@ void* FctThreadClient(void* p)
 
 		TraitementConnexion(sService); 
 
-		//teste Receive
-		/*char buffer[100]; 
-		int nbLus; 
-
-		if ((nbLus = Receive(sService,buffer)) < 0) 
-		{ 
-			perror("Erreur de Receive dans Serveur"); 
-			close(sService); 
-			close(sEcoute); 
-			exit(1); 
-		} 
-
-		
-		int nbEnvoye;
-		if((nbEnvoye=Send(sService, buffer, strlen(buffer)))==-1)
-		{
-			perror("Erreur de send dans Serveur"); 
-			close(sService); 
-			close(sEcoute); 
-			exit(1); 
-		}*/
+	
 		printf("serveur apres send()\n");
 	} 
 } 
@@ -199,6 +179,7 @@ void HandlerSIGINT(int s)
 { 
 	printf("\nArret du serveur.\n"); 
 	close(sEcoute); 
+
 
 	pthread_mutex_lock(&mutexSocketsAcceptees); 
 	for (int i=0 ; i<TAILLE_FILE_ATTENTE ; i++) 
@@ -222,6 +203,7 @@ void TraitementConnexion(int sService)
 
 	while(onContinue)
 	{
+
 		if((nbLus = Receive(sService, requete))<0)
 		{
 			perror("Erreur Receive");
@@ -242,6 +224,14 @@ void TraitementConnexion(int sService)
 
 		// ***** Traitement de la requete *********** 
 		onContinue = OBEP(requete,reponse,sService); 
+		if(onContinue)
+		{
+		 	printf("serveurTraitement onContinue : true\n");
+		}
+		else
+		{
+			printf("serveurTraitement onContinue : false\n");
+		}
 		
 		// ***** Envoi de la reponse **************** 
 		if ((nbEcrits = Send(sService,reponse,strlen(reponse))) < 0) 
