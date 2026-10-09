@@ -31,7 +31,7 @@ bool OBEP(char* requete, char* reponse,int socket) //serveur l'appel
 
     printf("\n");
 
-	printf("\nptr = %s\n", ptr);
+	printf("\nOBEP Requete recue = %s\n", ptr);
 
 	// ***** LOGIN ****************************************** 
 	if (strcmp(ptr,"LOGIN") == 0)  
@@ -156,9 +156,10 @@ bool OBEP(char* requete, char* reponse,int socket) //serveur l'appel
 
 		char *lastName= strtok(NULL, "#");
         char *firstName = strtok(NULL, "#");
-       
+        char * birthday  =strtok(NULL, "#");
+       	
 
-        int id = OBEP_ADD_AUTHOR(lastName, firstName);
+        int id = OBEP_ADD_AUTHOR(lastName, firstName, birthday);
         
         if(id <=0)
         {
@@ -175,12 +176,12 @@ bool OBEP(char* requete, char* reponse,int socket) //serveur l'appel
 		char *name= strtok(NULL, "#");
  
         int id = OBEP_ADD_SUBJECT(name);
-        sprintf(reponse, "ADD_SUBJECT#ok#%d", id);
         if(id <=0)
         {
+        	 sprintf(reponse, "ADD_SUBJECT#ko#%d", id);
             return false;
         }
-        
+         sprintf(reponse, "ADD_SUBJECT#ok#%d", id);
         return true ;
 	}
 
@@ -460,14 +461,13 @@ int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName)
+int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName, const char * birthday)
 {
 	MYSQL_RES *resultat;
 	MYSQL_ROW row;
 	char requete[200];
 	int id;
-	 sprintf(requete, "SELECT id FROM authors WHERE lower(last_name) like lower('%s') AND lower(first_name) = lower('%s');",
-            lastName, firstName);
+	sprintf(requete, "SELECT id FROM authors WHERE lower(last_name) like lower('%s') AND lower(first_name) = lower('%s');",lastName, firstName);
 	 pthread_mutex_lock(&mutexBD);
 	if(mysql_query(connexion, requete))
 	{
@@ -497,9 +497,10 @@ int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName)
         return id;
     }
 
+    printf("birthday %s\n", birthday);
+
     // L'auteur n'existe pas → insertion
-    sprintf(requete,"INSERT INTO authors (last_name, first_name) VALUES ('%s', '%s');",
-            lastName, firstName);
+    sprintf(requete,"INSERT INTO authors  VALUES ('%s', '%s', '%s');", lastName, firstName, birthday);
 
 	if(mysql_query(connexion, requete))
 	{
@@ -523,25 +524,28 @@ int OBEP_ADD_SUBJECT(const char* nom)
 	MYSQL_ROW row;
 	char requete[200];
 	int id;
-	 sprintf(requete, "SELECT id FROM subjects WHERE lower(name) like lower('%s');",
-            nom);
-	 pthread_mutex_lock(&mutexBD);
+
+	
+	sprintf(requete, "SELECT id FROM subjects WHERE lower(name) like lower('%s');",nom);
+	pthread_mutex_lock(&mutexBD);
 	if(mysql_query(connexion, requete))
 	{
-		fprintf(stderr, "Erreur mysql : %s\n",
-        mysql_error(connexion));
+		fprintf(stderr, "Erreur mysql : %s\n",mysql_error(connexion));
+		
 
         return -1;
 	}
-
+	
 	resultat = mysql_store_result(connexion);
 
 	 if (resultat == NULL)
     {
         fprintf(stderr, "Erreur mysql : %s\n", mysql_error(connexion));
+  
         return -1;
     }
 
+    
     // L'auteur existe déjà
     if (mysql_num_rows(resultat) > 0)
     {
@@ -555,8 +559,7 @@ int OBEP_ADD_SUBJECT(const char* nom)
     }
 
     // L'auteur n'existe pas → insertion
-    sprintf(requete,"INSERT INTO subjects (name) VALUES ('%s');",
-            nom);
+    sprintf(requete,"INSERT INTO subjects (name) VALUES ('%s');",nom);
 
 	if(mysql_query(connexion, requete))
 	{
@@ -568,8 +571,9 @@ int OBEP_ADD_SUBJECT(const char* nom)
 	id=(int)mysql_insert_id(connexion);
 
 	mysql_free_result(resultat);
-	pthread_mutex_lock(&mutexBD);
+	pthread_mutex_unlock(&mutexBD);
 
+	
 	return id;
 }
 

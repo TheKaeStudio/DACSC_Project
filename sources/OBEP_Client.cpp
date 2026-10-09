@@ -261,7 +261,7 @@ int OBEP_Get_authors(Author authors[], int maxAuthors)
 }
 
 /**************************OBEP_Get_subjets************************************/
-int OBEP_Get_subjets(Subject subjects[], int maxSubjects)
+int OBEP_Get_subjects(Subject subjects[], int maxSubjects)
 {
 
     char requete[200];
@@ -322,13 +322,13 @@ int OBEP_Get_subjets(Subject subjects[], int maxSubjects)
 }
 
 /**************************OBEP_add_author************************************/
-int OBEP_add_author (const char* lastName, const char* firstName)
+int OBEP_add_author (const char* lastName, const char* firstName, const char* birthday)
 {
 
     char requete[200];
     char reponse[200];
     int id ;
-    sprintf(requete, "ADD_AUTHOR#%s#%s", lastName, firstName);
+    sprintf(requete, "ADD_AUTHOR#%s#%s#%s", lastName, firstName, birthday);
     Echange(requete, reponse);
     char *ptr = strtok(reponse, "#");
 
@@ -354,13 +354,15 @@ int OBEP_add_author (const char* lastName, const char* firstName)
 
 
 /**************************OBEP_add_subjet ************************************/
-int OBEP_add_subjet (const char* nom)
+int OBEP_add_subject (const char* nom)
 {
     char requete[200];
     char reponse[200];
     int id;
     sprintf(requete, "ADD_SUBJECT#%s", nom);
+    printf("dans OBEP_add_subject requete envoyé : %s\n", requete);
     Echange(requete, reponse);
+    printf("dans OBEP_add_subject requete recu : %s\n", reponse);
     char *ptr = strtok(reponse, "#");
 
     if(ptr == NULL || strcmp(ptr,"ADD_SUBJECT") !=0)

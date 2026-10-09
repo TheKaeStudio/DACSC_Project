@@ -18,11 +18,11 @@ int OBEP_Get_nb_subjects();
 
 int OBEP_Get_authors(Author authors[], int maxAuthors);
 
-int OBEP_Get_subjets(Subject subjects[], int maxSubjects);
+int OBEP_Get_subjects(Subject subjects[], int maxSubjects);
 
-int OBEP_add_author (const char* lastName, const char* firstName);
+int OBEP_add_author (const char* lastName, const char* firstName, const char * birthday);
 
-int OBEP_add_subjet (const char* nom);
+int OBEP_add_subject (const char* nom);
 
 int OBEP_add_book (int authorId,int subjectId,const char* title, const char* isbn, int pageCount,int stockQuantity, float price,int publishYear);
 void OBEP_close();

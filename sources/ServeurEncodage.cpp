@@ -19,7 +19,7 @@
 #define FichierNom "FConfigServeur.txt"
 
 
-#define TAILLE_FILE_ATTENTE 20 
+#define TAILLE_FILE_ATTENTE 2 
 int socketsAcceptees[TAILLE_FILE_ATTENTE]; 
 int indiceEcriture=0, indiceLecture=0; 
 
@@ -126,13 +126,21 @@ int main()
 		// (Production d'une tâche) 
 		pthread_mutex_lock(&mutexSocketsAcceptees); 
 		socketsAcceptees[indiceEcriture] = sService; // !!! 
-		indiceEcriture++; 
+		indiceEcriture++;
+
+		/*char messageListAttente[100] = "vous êtes en liste d'attend"; 
+		int taille = strlen(messageListAttente);
+		send(sService, messageListAttente,taille);*/
+
+
+		//printf("messageListAttente = %s \t taille =  %d\n", messageListAttente, taille);
 		if (indiceEcriture == TAILLE_FILE_ATTENTE) 
 		{
 			indiceEcriture = 0; 
 		}
 		pthread_mutex_unlock(&mutexSocketsAcceptees); 
 		pthread_cond_signal(&condSocketsAcceptees); 
+
 	} 
 
 	return 0;
@@ -201,6 +209,7 @@ void TraitementConnexion(int sService)
 	int nbLus, nbEcrits; 
 	bool onContinue = true;
 
+//onContinue pour sortir de ma boucle de traitement
 	while(onContinue)
 	{
 
@@ -210,6 +219,7 @@ void TraitementConnexion(int sService)
 			close(sService);
 			HandlerSIGINT(0);
 		}
+
 
 		// ***** Fin de connexion ? ***************** 
 		if (nbLus == 0) 

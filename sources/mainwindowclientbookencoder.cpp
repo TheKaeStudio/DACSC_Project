@@ -254,11 +254,81 @@ void MainWindowClientBookEncoder::on_pushButtonAddAuthor_clicked() {
     cout << "Prénom : " << firstName << endl;
     cout << "Date de naissance : " << birthDate << endl;
 
+    int id= OBEP_add_author (lastName.c_str(), firstName.c_str(), birthDate.c_str());
+    if(id >0)
+    {
+        int nbAuteur = OBEP_Get_nb_authors();
+
+        cout << "Nombre d'auteurs : " << nbAuteur << endl;
+
+        if (nbAuteur > 0)
+        {
+            Author* auteurs = new Author[nbAuteur];
+
+            int nb = OBEP_Get_authors( auteurs, nbAuteur);
+
+            if (nb >= 0)
+            {
+                for (int i = 0; i < nb; i++)
+                {
+                    cout << "ID : " << auteurs[i].id << endl;
+
+                    cout << "Nom : " << auteurs[i].lastName << endl;
+
+                    cout << "Prénom : " << auteurs[i].firstName << endl;
+
+                    string nomComplet = string(auteurs[i].firstName) + " " + string(auteurs[i].lastName);
+
+                    this->addComboBoxAuthors(nomComplet);
+                
+                }
+            }
+
+            delete[] auteurs;
+        }
+    }
+    else
+    {
+        this->dialogError("AddAuthor", "Erreur lors de l'ajout de l'auteur");
+    }
+
 }
 
 void MainWindowClientBookEncoder::on_pushButtonAddSubject_clicked() {
     string name = this->dialogInputText("Nouveau sujet","Nom ?");
     cout << "Nom : " << name << endl;
+
+    int id = OBEP_add_subject(name.c_str());
+    if(id >0)
+    {
+        int nbSujet = OBEP_Get_nb_subjects();
+
+
+        if (nbSujet > 0)
+        {
+            Subject* sujets = new Subject[nbSujet];
+
+            int nb = OBEP_Get_subjects(sujets, nbSujet);
+            cout << "nb = "<< nb <<endl;
+           
+            for (int i = 0; i < nbSujet; i++)
+            {
+                cout << "ID : "<< sujets[i].id << endl;
+
+                cout << "Nom : " << sujets[i].name << endl;
+
+                this->addComboBoxSubjects( sujets[i].name);
+               
+            }
+    
+
+            delete[] sujets;
+        }
+    }
+    else
+    {
+        this->dialogError("AddSubject", "Erreur lors de l'ajout du sujet");
+    }
 }
 
 void MainWindowClientBookEncoder::on_pushButtonAddBook_clicked() {
@@ -308,6 +378,7 @@ void MainWindowClientBookEncoder::on_pushButtonAddBook_clicked() {
 }
 
 void MainWindowClientBookEncoder::on_pushButtonClear_clicked() {
+    cout<<"je suis passé par la"<<endl;
     ui->lineEditTitle->clear();
     ui->lineEditIsbn->clear();
     ui->spinBoxPageCount->setValue(0);
@@ -351,33 +422,27 @@ void MainWindowClientBookEncoder::on_actionLogin_triggered()
 
                     cout << "Nom : " << auteurs[i].lastName << endl;
 
-                    cout << "Prénom : "
-                         << auteurs[i].firstName << endl;
+                    cout << "Prénom : " << auteurs[i].firstName << endl;
 
                     string nomComplet = string(auteurs[i].firstName) + " " + string(auteurs[i].lastName);
 
                     this->addComboBoxAuthors(nomComplet);
-                    cout<< "mis dans le tableau : "<< nomComplet <<endl;
+                
                 }
             }
 
             delete[] auteurs;
         }
 
-
-        // =========================
-        // SUJETS
-        // =========================
-
+        /*SUBJECTS*/
         int nbSujet = OBEP_Get_nb_subjects();
 
-        cout << "Nombre de sujets : "<< nbSujet << endl;
 
         if (nbSujet > 0)
         {
             Subject* sujets = new Subject[nbSujet];
 
-            int nb = OBEP_Get_subjets(sujets, nbSujet);
+            int nb = OBEP_Get_subjects(sujets, nbSujet);
             cout << "nb = "<< nb <<endl;
            
             for (int i = 0; i < nbSujet; i++)
@@ -387,7 +452,7 @@ void MainWindowClientBookEncoder::on_actionLogin_triggered()
                 cout << "Nom : " << sujets[i].name << endl;
 
                 this->addComboBoxSubjects( sujets[i].name);
-                cout << "mis dans le tableau"<<endl;
+               
             }
     
 
