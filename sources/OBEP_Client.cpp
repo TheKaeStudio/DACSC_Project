@@ -33,7 +33,6 @@ void Echange(char* requete, char* reponse)
     }
 
     // ***** Attente de la reponse ************************** 
-    printf("attend de la reponse\n");
       
     if ((nbLus = Receive(sClient,reponse)) < 0) 
     { 
@@ -42,7 +41,7 @@ void Echange(char* requete, char* reponse)
         exit(1); 
     }
 
-    printf("debloqué\n");
+  
     if (nbLus == 0) 
     { 
         printf("Serveur arrete, pas de reponse reçue...\n"); 
@@ -51,7 +50,7 @@ void Echange(char* requete, char* reponse)
     } 
 
     reponse[nbLus] = '\0';
-    printf("reponse %s\n", reponse);
+
 }
 
 
@@ -83,7 +82,7 @@ bool OBEP_Login(const char* user, const char* password)
 
     if (strcmp(ptr, "ok") == 0)
     {
-        printf("Login OK.\n");
+     
         return true;
     }
 
@@ -200,23 +199,22 @@ int OBEP_Get_authors(Author authors[], int maxAuthors)
     Echange(requete, reponse);
 
     char *ptr = strtok(reponse, "#");
-    printf("OBEP_Get_authors : *ptr  = %s\n", ptr);
-
+   
 
     if (ptr == NULL || strcmp(ptr, "GET_AUTHORS") != 0)
     {
         return -1;
     }
-
+    //ok
     ptr = strtok(NULL, "#");
-    printf("OBEP_Get_authors : *ptr  = %s\n", ptr);
+   
     if (ptr == NULL || strcmp(ptr, "ok") != 0)
     {
         return -1;
     }
-
+    //nbAuteur
     ptr = strtok(NULL, "#");
-    printf("OBEP_Get_authors : *ptr  = %s\n", ptr);
+  
 
     if (ptr == NULL)
     {
@@ -224,7 +222,7 @@ int OBEP_Get_authors(Author authors[], int maxAuthors)
     }
 
     int nbAuthors = atoi(ptr);
-    printf("dans client nbAuthors = %d\n", nbAuthors);
+   
 
     if (nbAuthors > maxAuthors)
     {
@@ -271,7 +269,7 @@ int OBEP_Get_subjects(Subject subjects[], int maxSubjects)
     sprintf(requete,"GET_SUBJECTS#");
     Echange(requete, reponse);
     char *ptr = strtok(reponse, "#");
-    printf("OBEP_Get_subjets : ptr = %s\n", ptr);
+
 
     if(ptr == NULL || strcmp(ptr, "GET_SUBJECTS")!=0)
     {
@@ -279,13 +277,13 @@ int OBEP_Get_subjects(Subject subjects[], int maxSubjects)
     }
 
     ptr = strtok(NULL, "#");
-    printf("OBEP_Get_subjets : ptr = %s\n", ptr);
+  
     if(ptr == NULL || strcmp(ptr, "ko")==0)
     {
         return -1;
     }
     ptr = strtok(NULL,"#");
-    printf("OBEP_Get_subjets : ptr = %s\n", ptr);
+ 
     if (ptr == NULL)
     {
         return -1;
@@ -322,13 +320,15 @@ int OBEP_Get_subjects(Subject subjects[], int maxSubjects)
 }
 
 /**************************OBEP_add_author************************************/
-int OBEP_add_author (const char* lastName, const char* firstName, const char* birthday)
+//int OBEP_add_author (const char* lastName, const char* firstName, const char* birthday)
+int OBEP_add_author (const char* lastName, const char* firstName)
+
 {
 
     char requete[200];
     char reponse[200];
     int id ;
-    sprintf(requete, "ADD_AUTHOR#%s#%s#%s", lastName, firstName, birthday);
+    sprintf(requete, "ADD_AUTHOR#%s#%s", lastName, firstName);
     Echange(requete, reponse);
     char *ptr = strtok(reponse, "#");
 
@@ -360,9 +360,9 @@ int OBEP_add_subject (const char* nom)
     char reponse[200];
     int id;
     sprintf(requete, "ADD_SUBJECT#%s", nom);
-    printf("dans OBEP_add_subject requete envoyé : %s\n", requete);
+   
     Echange(requete, reponse);
-    printf("dans OBEP_add_subject requete recu : %s\n", reponse);
+    
     char *ptr = strtok(reponse, "#");
 
     if(ptr == NULL || strcmp(ptr,"ADD_SUBJECT") !=0)

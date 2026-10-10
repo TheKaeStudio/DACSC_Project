@@ -177,6 +177,7 @@ void* FctThreadClient(void* p)
 		printf("\t[THREAD %p] Je m'occupe de la socket %d\n", pthread_self(),sService); 
 
 		TraitementConnexion(sService); 
+		printf("je sors et je bloque\n");
 
 	
 		printf("serveur apres send()\n");
@@ -212,7 +213,7 @@ void TraitementConnexion(int sService)
 //onContinue pour sortir de ma boucle de traitement
 	while(onContinue)
 	{
-
+		nbLus=0;
 		if((nbLus = Receive(sService, requete))<0)
 		{
 			perror("Erreur Receive");
@@ -234,15 +235,8 @@ void TraitementConnexion(int sService)
 
 		// ***** Traitement de la requete *********** 
 		onContinue = OBEP(requete,reponse,sService); 
-		if(onContinue)
-		{
-		 	printf("serveurTraitement onContinue : true\n");
-		}
-		else
-		{
-			printf("serveurTraitement onContinue : false\n");
-		}
 		
+		nbEcrits=0;
 		// ***** Envoi de la reponse **************** 
 		if ((nbEcrits = Send(sService,reponse,strlen(reponse))) < 0) 
 		{ 

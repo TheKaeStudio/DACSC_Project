@@ -23,7 +23,9 @@ int OBEP_GET_AUTHORS(Author authors[], int maxAuthors);
 
 int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects);
 
-int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName, const char * birthday);
+int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName);
+
+//int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName, const char * birthday);
 
 int OBEP_ADD_SUBJECT(const char* nom);
 
