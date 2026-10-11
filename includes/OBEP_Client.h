@@ -38,5 +38,7 @@ int OBEP_add_subject (const char* nom);
 int OBEP_add_book (int authorId,int subjectId,const char* title, const char* isbn, int pageCount,int stockQuantity, float price,int publishYear);
 void OBEP_close();
 
+bool MessageArriver(char *message, int taille);
+
 
 #endif

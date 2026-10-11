@@ -21,7 +21,7 @@
 
 #define TAILLE_FILE_ATTENTE 2 
 int socketsAcceptees[TAILLE_FILE_ATTENTE]; 
-int indiceEcriture=0, indiceLecture=0; 
+int indiceEcriture=0, indiceLecture=0, nbSocketsEnAttente = 0; 
 
 int sEcoute;
 int PORT_ENCODING, NB_THREADS_POOL;
@@ -35,6 +35,10 @@ pthread_cond_t  condSocketsAcceptees;
 
 MYSQL* connexion;
 void* thread_function(void* arg);
+
+char requete[300];
+int tailleData;
+
 
 int main() 
 {
@@ -111,7 +115,7 @@ int main()
 
 	while(1) 
 	{ 
-		printf("Attente d'une connexion...\n"); 
+		//printf("Attente d'une connexion...\n"); 
 
 		if ((sService = Accept(sEcoute,ipClient)) == -1) 
 		{ 
@@ -121,17 +125,32 @@ int main()
 			exit(1); 
 		} 
 
-		pthread_mutex_lock(&mutexSocketsAcceptees); 
-		socketsAcceptees[indiceEcriture] = sService; // !!! 
-		indiceEcriture++;
-		
 	
-		printf("Connexion acceptée :socket=%d\n",sService); 
-		
-
-		if (indiceEcriture == TAILLE_FILE_ATTENTE) 
+		pthread_mutex_lock(&mutexSocketsAcceptees); 
+		if (nbSocketsEnAttente < TAILLE_FILE_ATTENTE)
 		{
-			indiceEcriture = 0; 
+		    socketsAcceptees[indiceEcriture] = sService;
+
+		    indiceEcriture =(indiceEcriture + 1) % TAILLE_FILE_ATTENTE;
+
+		    nbSocketsEnAttente++;
+
+		    printf("Socket %d ajoutée dans la file\n", sService);
+
+		    char message[] = "WAIT#Vous êtes en attente#";
+		    Send(sService, message, strlen(message));
+
+		    pthread_cond_signal(&condSocketsAcceptees);
+		}
+		else
+		{
+		    pthread_mutex_unlock(&mutexSocketsAcceptees);
+
+		    char message[] = "BUSY#File pleine#";
+		    Send(sService, message, strlen(message));
+
+		    close(sService);
+		    continue;
 		}
 		pthread_mutex_unlock(&mutexSocketsAcceptees); 
 		pthread_cond_signal(&condSocketsAcceptees); 
@@ -153,23 +172,27 @@ void* FctThreadClient(void* p)
 
 		// Attente d'une tâche 
 		pthread_mutex_lock(&mutexSocketsAcceptees); 
-		while (indiceEcriture == indiceLecture) 
+		while (nbSocketsEnAttente == 0) 
 		{
 			pthread_cond_wait(&condSocketsAcceptees,&mutexSocketsAcceptees); 
 		}
-
 		sService = socketsAcceptees[indiceLecture]; 
 		socketsAcceptees[indiceLecture] = -1; 
-		indiceLecture++; 
+		indiceLecture = (indiceLecture + 1) % TAILLE_FILE_ATTENTE; 
+		nbSocketsEnAttente--;
+		
 
-		if (indiceLecture == TAILLE_FILE_ATTENTE)
-		{
-			indiceLecture = 0;
-		}  
 		pthread_mutex_unlock(&mutexSocketsAcceptees); 
 
 		// Traitement de la connexion (consommation de la tâche) 
 		printf("\t[THREAD %p] Je m'occupe de la socket %d\n", pthread_self(),sService); 
+
+		///////////////////////////////////////////////
+
+		sprintf(requete, "READY#Vous êtes pris en charge#");
+    tailleData = strlen(requete);
+		Send(sService, requete, tailleData);
+		///////////////////////////////////////////////
 
 		TraitementConnexion(sService); 
 		printf("je suis en TraitementConnexion\n");

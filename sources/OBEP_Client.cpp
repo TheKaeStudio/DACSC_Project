@@ -483,3 +483,35 @@ void OBEP_close()
 {
     close(sClient);
 }
+
+/************************MessageArriver()*******************************/
+
+bool MessageArriver(char *message, int taille)
+{
+    char reponse[200];
+
+    int nbLus = Receive(sClient, reponse);
+
+    if (nbLus <= 0 || nbLus >= (int)sizeof(reponse))
+    {
+        return false;
+    }
+
+    reponse[nbLus] = '\0';
+
+    char* type = strtok(reponse, "#");
+    char* contenu = strtok(NULL, "#");
+
+    if (type == NULL || contenu == NULL)
+    {
+        return false;
+    }
+
+    if (strcmp(type, "BUSY") == 0 || strcmp(type, "WAIT") == 0 || strcmp(type, "READY") == 0)
+    {
+        snprintf(message, taille, "%s", contenu);
+        return true;
+    }
+
+    return false;
+}

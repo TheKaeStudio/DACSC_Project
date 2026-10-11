@@ -22,8 +22,32 @@ MainWindowClientBookEncoder::MainWindowClientBookEncoder(QWidget *parent)
             "Impossible de se connecter au serveur."
         );
     }
-    
 
+    char message[200]={0};
+   
+    if(MessageArriver(message,  sizeof(message)))
+    {
+        this->dialogMessage("Serveur", message);
+        if(strcmp(message, "File pleine")!=0)
+        {
+            message[0] = '\0';
+            MessageArriver(message,  sizeof(message));
+            this->dialogMessage("Serveur", message);
+
+        }
+        else
+        {
+            this->dialogError("Serveur","revenez plutard");
+            return;
+        }
+    }
+    else
+    {
+         this->dialogError("Serveur","Aucune notification valide reçue.");
+        return;
+    }
+
+    
     this->logoutOk();
     ::close(2);
 
@@ -45,16 +69,6 @@ MainWindowClientBookEncoder::MainWindowClientBookEncoder(QWidget *parent)
 
     this->logoutOk();
 
-    // Exemples d'utilisation (à supprimer)
-    this->addTupleTableBooks(1,"Les Thanatonautes","Bernard Werber","Science-Fiction","978-2253139225",505,1999,9.7f,3);
-    this->addTupleTableBooks(6,"Dune","Frank Herbert","Science-Fiction","978-2266320481",929,2021,11.95f,13);
-    this->addTupleTableBooks(13,"Le silence des agneaux","Thomas Harris","Thriller","978-2266208949",377,2015,7.7f,17);
-
-    this->addComboBoxAuthors("Bernard Werber");
-    this->addComboBoxAuthors("Dan Brown");
-
-    this->addComboBoxSubjects("Roman");
-    this->addComboBoxSubjects("Science-fiction");
 }
 
 MainWindowClientBookEncoder::~MainWindowClientBookEncoder() {

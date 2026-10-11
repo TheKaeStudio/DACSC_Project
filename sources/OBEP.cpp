@@ -63,7 +63,7 @@ bool OBEP(char* requete, char* reponse,int socket) //serveur l'appel
 		if(OBEP_Logout(socket))
 		{
 			sprintf(reponse, "LOGOUT#ok");
-			return true;
+			return false;
 		}
 		sprintf(reponse, "LOGOUT#ko#Client non logge");
     	return false;
@@ -348,7 +348,7 @@ int OBEP_GET_NB_AUTHORS()
 	int nbAuthor;
 
 	
-	 sprintf(requete, "SELECT count(*) FROM authors;");
+	sprintf(requete, "SELECT count(*) FROM authors;");
 	pthread_mutex_unlock(&mutexBD);
 	pthread_mutex_lock(&mutexBD);
 	if(mysql_query(connexion, requete))
