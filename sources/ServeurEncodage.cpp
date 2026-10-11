@@ -105,7 +105,7 @@ int main()
 	// Mise en boucle du serveur 
 	int sService; 
 	char ipClient[50]; 
-
+	bool verifPlace = false; 
 	printf("Demarrage du serveur.\n"); 
 
 
@@ -117,23 +117,18 @@ int main()
 		{ 
 			perror("Erreur de Accept"); 
 			close(sEcoute); 
-			//OBEP_Close(); 
+			OBEP_Close(); 
 			exit(1); 
 		} 
 
-		printf("Connexion acceptée : IP=%s socket=%d\n",ipClient,sService); 
-		// Insertion en liste d'attente et réveil d'un thread du pool
-		// (Production d'une tâche) 
 		pthread_mutex_lock(&mutexSocketsAcceptees); 
 		socketsAcceptees[indiceEcriture] = sService; // !!! 
 		indiceEcriture++;
+		
+	
+		printf("Connexion acceptée :socket=%d\n",sService); 
+		
 
-		/*char messageListAttente[100] = "vous êtes en liste d'attend"; 
-		int taille = strlen(messageListAttente);
-		send(sService, messageListAttente,taille);*/
-
-
-		//printf("messageListAttente = %s \t taille =  %d\n", messageListAttente, taille);
 		if (indiceEcriture == TAILLE_FILE_ATTENTE) 
 		{
 			indiceEcriture = 0; 
@@ -177,10 +172,8 @@ void* FctThreadClient(void* p)
 		printf("\t[THREAD %p] Je m'occupe de la socket %d\n", pthread_self(),sService); 
 
 		TraitementConnexion(sService); 
-		printf("je sors et je bloque\n");
-
-	
-		printf("serveur apres send()\n");
+		printf("je suis en TraitementConnexion\n");
+		
 	} 
 } 
 
@@ -213,7 +206,7 @@ void TraitementConnexion(int sService)
 //onContinue pour sortir de ma boucle de traitement
 	while(onContinue)
 	{
-		nbLus=0;
+
 		if((nbLus = Receive(sService, requete))<0)
 		{
 			perror("Erreur Receive");
@@ -235,8 +228,8 @@ void TraitementConnexion(int sService)
 
 		// ***** Traitement de la requete *********** 
 		onContinue = OBEP(requete,reponse,sService); 
+	
 		
-		nbEcrits=0;
 		// ***** Envoi de la reponse **************** 
 		if ((nbEcrits = Send(sService,reponse,strlen(reponse))) < 0) 
 		{ 
@@ -246,7 +239,7 @@ void TraitementConnexion(int sService)
 		} 
 		printf("\t[THREAD %p] Reponse envoyee = %s\n",pthread_self(),reponse); 
 
-		printf("nbLus : %d\n");
+
 		if (!onContinue)  
 			printf("\t[THREAD %p] Fin de connexion de la socket %d\n",pthread_self(),sService); 
 

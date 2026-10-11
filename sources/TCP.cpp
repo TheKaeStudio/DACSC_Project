@@ -133,7 +133,7 @@ int ClientSocket(char* ipServeur,int portServeur)
 
 int Send(int sSocket, char *data, int taille)
 {
-    int nbEcrits;
+    int nbEcrits = 0;
     int total = 0;
 
     char messagePlusEntete[taille + 5];
@@ -166,7 +166,7 @@ int Send(int sSocket, char *data, int taille)
 
 int Receive(int sSocket, char *data)
 {
-    int nbLus;
+    int nbLus=0;
     int total = 0;
     int tailleData;
 

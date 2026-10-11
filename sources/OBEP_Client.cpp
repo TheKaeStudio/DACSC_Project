@@ -66,7 +66,7 @@ bool OBEP_Login(const char* user, const char* password)
         return false;
     }
 
-    sprintf(requete, "LOGIN#%s#%s", user, password);
+    sprintf(requete, "LOGIN#%s#%s#", user, password);
 
     Echange(requete, reponse);
 
@@ -126,7 +126,7 @@ int OBEP_Get_nb_authors()
     char reponse[200];
     int nbAuthors;
 
-    sprintf(requete,"GET_AUTHORS_nb");
+    sprintf(requete,"GET_AUTHORS_nb#");
     Echange(requete, reponse);
     char *ptr = strtok(reponse, "#");
     if(ptr == NULL || strcmp(ptr, "GET_AUTHORS_nb") !=0)
@@ -162,7 +162,7 @@ int OBEP_Get_nb_subjects()
     int nbSubject;
 
 
-    sprintf(requete,"GET_SUBCJETS_nb");
+    sprintf(requete,"GET_SUBCJETS_nb#");
     Echange(requete, reponse);
     char *ptr = strtok(reponse, "#");
     if(ptr == NULL || strcmp(ptr, "GET_SUBJECTS_nb") !=0)
@@ -319,16 +319,75 @@ int OBEP_Get_subjects(Subject subjects[], int maxSubjects)
 
 }
 
-/**************************OBEP_add_author************************************/
-//int OBEP_add_author (const char* lastName, const char* firstName, const char* birthday)
-int OBEP_add_author (const char* lastName, const char* firstName)
+/*********************OBEP_Get_author***************************/
+int OBEP_Get_author(const char * lastName, const char* firstName)
+{
+    char requete[200];
+    char reponse[200];
 
+    int id;
+    sprintf(requete, "GET_AUTHOR#%s#%s#", lastName, firstName);
+    Echange(requete , reponse);
+    char *ptr = strtok(reponse, "#");
+    if(ptr == NULL || strcmp(ptr,"GET_AUTHOR")!=0)
+    {
+       return -1;
+    }
+    ptr = strtok(NULL, "#");
+    if(ptr == NULL || strcmp(ptr,"ok")!=0)
+    {
+       return -1;
+    }
+    ptr = strtok(NULL, "#");
+    id = atoi(ptr);
+
+    return id;
+
+
+}
+
+/*********************OBEP_Get_subject***************************/
+int OBEP_Get_subject(const char * Name)
+{
+    char requete[200];
+    char reponse[200];
+
+    int id;
+    sprintf(requete, "GET_SUBJECT#%s#", Name);
+    Echange(requete , reponse);
+    char *ptr = strtok(reponse, "#");
+    printf("requete recu : %s\n", ptr);
+    if(ptr == NULL || strcmp(ptr,"GET_SUBJECT")!=0)
+    {
+        printf("Erreur ici dans la requete GET_SUBJECT\n");
+       return -1;
+    }
+    ptr = strtok(NULL, "#");
+    printf("validation recu %s\n", ptr);
+
+    if(ptr == NULL || strcmp(ptr,"ok")!=0)
+    {
+       return -1;
+    }
+
+    ptr = strtok(NULL, "#");
+    id = atoi(ptr);
+    printf("id sujet : %d\n", id);
+
+    return id;
+
+
+}
+
+/**************************OBEP_add_author************************************/
+
+int OBEP_add_author (const char* lastName, const char* firstName, const char* birthday)
 {
 
     char requete[200];
     char reponse[200];
     int id ;
-    sprintf(requete, "ADD_AUTHOR#%s#%s", lastName, firstName);
+    sprintf(requete, "ADD_AUTHOR#%s#%s#%s#", lastName, firstName, birthday);
     Echange(requete, reponse);
     char *ptr = strtok(reponse, "#");
 
@@ -359,7 +418,7 @@ int OBEP_add_subject (const char* nom)
     char requete[200];
     char reponse[200];
     int id;
-    sprintf(requete, "ADD_SUBJECT#%s", nom);
+    sprintf(requete, "ADD_SUBJECT#%s#", nom);
    
     Echange(requete, reponse);
     
@@ -393,7 +452,7 @@ int OBEP_add_book (int authorId,int subjectId,const char* title, const char* isb
     char requete[200];
     char reponse[200];
     int id;
-    sprintf(requete, "ADD_BOOK#%d#%d#%s#%s#%d#%d#%f#%d", authorId, subjectId, title, isbn, pageCount, stockQuantity, price, publishYear);
+    sprintf(requete, "ADD_BOOK#%d#%d#%s#%s#%d#%d#%f#%d#", authorId, subjectId, title, isbn, pageCount, stockQuantity, price, publishYear);
     Echange(requete, reponse);
     char *ptr= strtok(reponse, "#");
 

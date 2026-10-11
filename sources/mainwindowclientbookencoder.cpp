@@ -13,7 +13,7 @@ MainWindowClientBookEncoder::MainWindowClientBookEncoder(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindowClientBookEncoder)
 {
-    cout<<"je suis dans le constructeur";
+    
     ui->setupUi(this);
     if (!OBEP_Connect("0.0.0.0", 50000))
     {
@@ -22,6 +22,7 @@ MainWindowClientBookEncoder::MainWindowClientBookEncoder(QWidget *parent)
             "Impossible de se connecter au serveur."
         );
     }
+    
 
     this->logoutOk();
     ::close(2);
@@ -63,10 +64,7 @@ MainWindowClientBookEncoder::~MainWindowClientBookEncoder() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///// Fonctions utiles Table des livres encodés (ne pas modifier) ////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void MainWindowClientBookEncoder::addTupleTableBooks(int id,
-                                                     string title,
-                                                     string author,
-                                                     string subject,
+void MainWindowClientBookEncoder::addTupleTableBooks(int id, string title, string author, string subject,
                                                      string isbn,
                                                      int pageCount,
                                                      int publishYear,
@@ -254,7 +252,7 @@ void MainWindowClientBookEncoder::on_pushButtonAddAuthor_clicked() {
     cout << "Prénom : " << firstName << endl;
     cout << "Date de naissance : " << birthDate << endl;
 
-    int id= OBEP_add_author (lastName.c_str(), firstName.c_str());
+    int id= OBEP_add_author (lastName.c_str(), firstName.c_str(), birthDate.c_str());
     if(id >0)
     {
         int nbAuteur = OBEP_Get_nb_authors();
@@ -311,7 +309,7 @@ void MainWindowClientBookEncoder::on_pushButtonAddSubject_clicked() {
 
             int nb = OBEP_Get_subjects(sujets, nbSujet);
             cout << "nb = "<< nb <<endl;
-            
+
             this->clearComboBoxSubjects();
            
             for (int i = 0; i < nbSujet; i++)
@@ -343,15 +341,75 @@ void MainWindowClientBookEncoder::on_pushButtonAddBook_clicked() {
     float price;
     int stockQuantity;
     int publishYear;
-    authorId= ui->comboBoxAuthors->currentData().toInt();
-    subjectId = ui->comboBoxSubjects->currentData().toInt();;
+    string nomAuteur;
+    string nomSubjet;
+
+
     title = this->getTitle();
+    if(title.empty())
+    {
+        this->dialogError("title", "veuillez indiquer le titre");
+        return;
+
+    }
     isbn = this->getIsbn();
+
+    if(isbn.empty())
+    {
+        this->dialogError("isbn", "veuillez indiquer l'isbn");
+        return;
+    }
     pageCount =  this->getPageCount();
+    if(pageCount == 0)
+    {
+        this->dialogError("pageCount", "veuillez indiquer le nombre de page");
+        return;
+    }
     stockQuantity = this->getStockQuantity();
+    if(stockQuantity ==0)
+    {
+        this->dialogError("pageCount", "veuillez indiquer le nombre de page");
+       return;
+    }
     price = this->getPrice();
+    if(price ==0)
+    {
+        this->dialogError("price", "veuillez indiquer le  prix");
+        return;
+    }
     publishYear = this->getPublishYear();
-   
+    if(publishYear ==0)
+    {
+        this->dialogError("publishYear", "veuillez indiquer l'annee");
+        return;
+    }
+
+    nomAuteur = this->getSelectionAuthor();
+    if(nomAuteur.empty())
+    {
+        this->dialogError("nomAuteur", "veuillez indiquer le nomAuteur");
+        return;
+    }
+    nomSubjet = this->getSelectionSubject();
+    if(nomSubjet.empty())
+    {
+        this->dialogError("nomSubjet", "veuillez indiquer le  sujet");
+        return;
+    }
+
+    string firstName;
+    string lastName;
+
+    // Séparation du prénom et du nom
+    size_t position = nomAuteur.find(' ');
+
+    if (position != string::npos)
+    {
+        firstName = nomAuteur.substr(0, position);
+        lastName = nomAuteur.substr(position + 1);
+    }
+
+
     
     cout << "title = " << title << endl;
     cout << "Isbn = " << isbn << endl;
@@ -360,22 +418,44 @@ void MainWindowClientBookEncoder::on_pushButtonAddBook_clicked() {
     cout << "PublishYear = " << price << endl;
     cout << "Stock = " << publishYear << endl;
 
-    cout << "selection auteur = " << this->getSelectionAuthor() << endl;
-    cout << "selection sujet  = " << this->getSelectionSubject() << endl;
+    cout << "selection auteur = " << nomAuteur << endl;
+    cout << "lastName auteur = " << lastName << endl;
+    cout << "firstName auteur = " << firstName << endl;
+    cout << "selection sujet  = " << nomSubjet << endl;
 
-
-
-    int id;
-     
-    id = OBEP_add_book(authorId, subjectId, title.c_str(), isbn.c_str(),pageCount,stockQuantity, price, publishYear);
-
-    if(id!=-1)
+    authorId = OBEP_Get_author(lastName.c_str(), firstName.c_str());
+    if(authorId<=0)
     {
-        this->dialogError("ADD_BOOK", "Le livre n' a pas été ajouté.");
+        this->dialogError("Erreur Get_author", "aucun auteurs trouver");
+    }
+    else
+    {
+        this->dialogMessage("OK Get_author", "auteur trouver");
+    }
+    
+
+    subjectId = OBEP_Get_subject(nomSubjet.c_str());
+
+    if(subjectId<=0)
+    {
+        this->dialogError("Erreur Get_subject", "aucun sujet trouver");
+    }
+    else
+    {
+        this->dialogMessage("Get_subject", "sujet trouver");
+    }
+
+    
+    int bookId;
+    bookId= OBEP_add_book(authorId, subjectId, title.c_str(), isbn.c_str(),pageCount,stockQuantity, price, publishYear);
+    if(bookId<=0)
+    {
+        this->dialogError("ADD_BOOK", "Erreur lors de l'ajout");
     }
     else
     {
         this->dialogMessage("ADD_BOOK", "livre ajouter");
+        this->addTupleTableBooks(bookId, title ,nomAuteur, nomSubjet , isbn, pageCount, publishYear, price, stockQuantity);
     }
     
 }

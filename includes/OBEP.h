@@ -15,17 +15,23 @@ bool OBEP_Login(const char* identifiant, const char* password);
 
 bool OBEP_Logout(int socket);
 
-int OBEP_GET_NB_AUTHORS();
-
-int OBEP_GET_NB_SUBJECTS();
-
 int OBEP_GET_AUTHORS(Author authors[], int maxAuthors);
 
 int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects);
 
-int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName);
+////////////////////////MES FONCTIONs////////////////////////////////////
+int OBEP_GET_NB_AUTHORS();
 
-//int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName, const char * birthday);
+int OBEP_GET_NB_SUBJECTS();
+
+int OBEP_GET_AUTHOR(const char *lastName, const char* firstName);
+
+int OBEP_GET_SUBJECT(const char* Name);
+///////////////////////////////////////////////////////////////////
+
+//int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName);
+
+int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName, const char * birthday);
 
 int OBEP_ADD_SUBJECT(const char* nom);
 

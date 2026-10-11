@@ -20,9 +20,18 @@ int OBEP_Get_authors(Author authors[], int maxAuthors);
 
 int OBEP_Get_subjects(Subject subjects[], int maxSubjects);
 
-int OBEP_add_author (const char* lastName, const char* firstName);
+///////////////////////////////////////////////////////////////////
+//recherche d'un auteur et recuperation de son id pour l'inseré dans la auteurId du book
+int OBEP_Get_author(const char * lastName, const char* firstName);
 
-//int OBEP_add_author (const char* lastName, const char* firstName, const char * birthday);
+//recherche d'un sujet
+int OBEP_Get_subject(const char * name);
+
+////////////////////////////////////////////////////////////////////
+
+//int OBEP_add_author (const char* lastName, const char* firstName);
+
+int OBEP_add_author (const char* lastName, const char* firstName, const char * birthday);
 
 int OBEP_add_subject (const char* nom);
 

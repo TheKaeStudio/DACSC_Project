@@ -21,6 +21,7 @@ extern MYSQL *connexion;
 bool OBEP(char* requete, char* reponse,int socket) //serveur l'appel
 {
 	
+	
 	// ***** Récupération nom de la requete ***************** 
 	char *ptr = strtok(requete,"#"); 
 	if (ptr == NULL)
@@ -143,16 +144,76 @@ bool OBEP(char* requete, char* reponse,int socket) //serveur l'appel
 		return true;
 		
 	}
+
+	/************************GET_AUTHOR 1auteur************************/
+	else if(strcmp(ptr, "GET_AUTHOR") == 0)
+	{
+		char lastName[100];
+		char firstName[100];
+		int id;
+		ptr = strtok(NULL, "#");
+		if(ptr == NULL)
+		{
+			sprintf(reponse, "GET_AUTHOR#ko");
+			return false;
+		}
+		strcpy(lastName, ptr);
+		ptr = strtok(NULL, "#");
+		if(ptr == NULL)
+		{
+			sprintf(reponse, "GET_AUTHOR#ko");
+			return false;
+		}
+		strcpy(firstName, ptr);
+
+
+		id = OBEP_GET_AUTHOR(lastName, firstName);
+
+		if(id<=0)
+		{
+			sprintf(reponse, "GET_AUTHOR#ko#%d", id);
+			return false;
+		}
+		sprintf(reponse, "GET_AUTHOR#ok#%d", id);
+		return true;
+
+	}
+
+	/************************GET_SUBJET 1sujet************************/
+	else if(strcmp(ptr, "GET_SUBJECT") == 0)
+	{
+		char Name[100];
+	
+		int id;
+		ptr = strtok(NULL, "#");
+		if(ptr == NULL)
+		{
+			sprintf(reponse, "GET_SUBJECT#ko#pas de nom");
+			return false;
+		}
+		strcpy(Name, ptr);
+	
+		id = OBEP_GET_SUBJECT(Name);
+
+		if(id<=0)
+		{
+			sprintf(reponse, "GET_SUBJECT#ko#%d", id);
+			return false;
+		}
+		sprintf(reponse, "GET_SUBJECT#ok#%d", id);
+		return true;
+
+	}
 	/**********************ADD_AUTHOR******************************/
 	else if(strcmp(ptr, "ADD_AUTHOR")==0)
 	{
 
 		char *lastName= strtok(NULL, "#");
         char *firstName = strtok(NULL, "#");
-        //char * birthday  =strtok(NULL, "#");
+        char * birthday  =strtok(NULL, "#");
        	
 
-        int id = OBEP_ADD_AUTHOR(lastName, firstName);
+        int id = OBEP_ADD_AUTHOR(lastName, firstName, birthday);
         
         if(id <=0)
         {
@@ -181,6 +242,7 @@ bool OBEP(char* requete, char* reponse,int socket) //serveur l'appel
 
 	else if(strcmp(ptr, "ADD_BOOK")==0)
 	{
+		
 		int authorId = atoi(strtok(NULL, "#"));
 		int subjectId = atoi(strtok(NULL, "#"));
 		char *title= strtok(NULL, "#");
@@ -189,20 +251,17 @@ bool OBEP(char* requete, char* reponse,int socket) //serveur l'appel
 		int stockQuantity = atoi(strtok(NULL, "#"));
 		float price = strtof(strtok(NULL, "#"), NULL);
 		int publishYear = atoi(strtok(NULL, "#"));
-        if (title == NULL)
-        {
-            sprintf(reponse, "ADD_BOOK#ko#Parametres manquants");
-            return false;
-        }
-
-
+        
+       
         int id = OBEP_ADD_BOOK(authorId, subjectId, title, isbn, pageCount, stockQuantity, price, publishYear);
-        sprintf(reponse, "ADD_BOOK#ok#%d", id);
+        
         if(id <=0)
         {
+        	sprintf(reponse, "ADD_BOOK#ko#pas inserer");
+        	
             return false;
         }
-        
+        sprintf(reponse, "ADD_BOOK#ok#%d", id);
         return true ;
 
 	}
@@ -285,7 +344,7 @@ int OBEP_GET_NB_AUTHORS()
 {
 	MYSQL_RES *resultat;
 	MYSQL_ROW row;
-	char requete[200];
+	char requete[500];
 	int nbAuthor;
 
 	
@@ -455,10 +514,95 @@ int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects)
 	return i;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////
+int OBEP_GET_AUTHOR(const char *lastName, const char* firstName)
+{
+	MYSQL_RES *resultat;
+	MYSQL_ROW row;
+	int id;
+	char requete[200];
+	sprintf(requete, "SELECT id FROM authors WHERE lower(last_name) like ('%s') AND lower(first_name) like lower('%s');", lastName, firstName);
 
-//int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName, const char * birthday)
-int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName)
+	pthread_mutex_unlock(&mutexBD);
+	if(mysql_query(connexion, requete))
+	{
+		fprintf(stderr, "Erreur mysql : %s\n",
+        mysql_error(connexion));
+        pthread_mutex_unlock(&mutexBD);
+	}
+
+	resultat = mysql_store_result(connexion);
+	if(resultat == NULL)
+	{
+		fprintf(stderr, "Erreur mysql %s\n", mysql_error(connexion));
+		pthread_mutex_unlock(&mutexBD);
+		return -1;
+	}
+	row = mysql_fetch_row(resultat);
+
+    if (row == NULL)
+    {
+        mysql_free_result(resultat);
+        pthread_mutex_unlock(&mutexBD);
+        return -1;
+    }
+
+    id = atoi(row[0]);
+
+    mysql_free_result(resultat);
+    pthread_mutex_unlock(&mutexBD);
+
+	return id;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+int OBEP_GET_SUBJECT(const char* Name)
+{
+	MYSQL_RES *resultat;
+	MYSQL_ROW row;
+	int id;
+	char requete[200];
+	printf("le nom est %s", Name);
+	sprintf(requete, "SELECT id FROM subjects WHERE lower(name) like ('%s');", Name);
+
+	pthread_mutex_unlock(&mutexBD);
+	if(mysql_query(connexion, requete))
+	{
+		fprintf(stderr, "Erreur mysql : %s\n",
+        mysql_error(connexion));
+        pthread_mutex_unlock(&mutexBD);
+        return -1;
+	}
+
+	resultat = mysql_store_result(connexion);
+	if(resultat == NULL)
+	{
+		fprintf(stderr, "Erreur mysql %s\n", mysql_error(connexion));
+		mysql_free_result(resultat);
+		pthread_mutex_unlock(&mutexBD);
+		return -1;
+	}
+	row = mysql_fetch_row(resultat);
+
+    if (row == NULL)
+    {
+        mysql_free_result(resultat);
+        pthread_mutex_unlock(&mutexBD);
+        return -1;
+    }
+
+    id = atoi(row[0]);
+
+    mysql_free_result(resultat);
+    pthread_mutex_unlock(&mutexBD);
+    printf("OBEP id = %d\n", id);
+
+	return id;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+//int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName)
+int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName, const char * birthday)
 {
 	MYSQL_RES *resultat;
 	MYSQL_ROW row;
@@ -497,7 +641,7 @@ int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName)
 
     // L'auteur n'existe pas insertion
     
-    sprintf(requete,"INSERT INTO authors(last_name, first_name)  VALUES ('%s', '%s');", lastName, firstName);
+    sprintf(requete,"INSERT INTO authors(last_name, first_name, birth_date)  VALUES ('%s', '%s', '%s');", lastName, firstName, birthday);
 
 	if(mysql_query(connexion, requete))
 	{
@@ -574,26 +718,28 @@ int OBEP_ADD_SUBJECT(const char* nom)
 	
 	return id;
 }
-
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int OBEP_ADD_BOOK(int authorId,int subjectId,const char* title, const char* isbn, int pageCount,int stockQuantity, float price,int publishYear)
 {
 	MYSQL_RES *resultat;
 	MYSQL_ROW row;
-	char requete[200];
+	char requete[700];
 	int id;
 
 
-	sprintf(requete,"select id from books where lower(title) like lower(%s) and lower(isbn) like lower(%s) and author_id = (%d);", title, isbn, authorId);
+	sprintf(requete,"select id from books where lower(title) like lower('%s') and lower(isbn) like lower('%s') and author_id = (%d);", title, isbn, authorId);
+	
 	pthread_mutex_lock(&mutexBD);
 	if(mysql_query(connexion, requete))
 	{
-		fprintf(stderr, "Erreur mysql : %s\n",
-        mysql_error(connexion));
+		fprintf(stderr, "Erreur mysql : %s\n", mysql_error(connexion));
 		pthread_mutex_unlock(&mutexBD);
+	
         return -1;
 	}
-
+	
+	resultat = mysql_store_result(connexion);
 	if (mysql_num_rows(resultat) > 0)
     {
         row = mysql_fetch_row(resultat);
@@ -606,17 +752,20 @@ int OBEP_ADD_BOOK(int authorId,int subjectId,const char* title, const char* isbn
         return id;
     }
 
+   
 	sprintf(requete,"INSERT INTO books (author_id, subject_id, title, isbn, page_count, stock_quantity, price, publish_year) "
-    "VALUES (%d, %d, '%s', '%s', %d, %d, %.2f, %d)",
-    authorId, subjectId,title,isbn,pageCount,stockQuantity, price,publishYear);
+    "VALUES (%d, %d, '%s', '%s', %d, %d, %.2f, %d)", authorId, subjectId,title,isbn,pageCount,stockQuantity, price,publishYear);
 
     if (mysql_query(connexion, requete))
     {
         fprintf(stderr, "Erreur mysql : %s\n",mysql_error(connexion));
+
         pthread_mutex_unlock(&mutexBD);
+       
         return -1;
     }
     id = (int)mysql_insert_id(connexion);
+   
     
 
 	mysql_free_result(resultat);
