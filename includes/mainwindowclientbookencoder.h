@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <string>
+#include <vector>
+#include "Model.h"
 using namespace std;
 
 QT_BEGIN_NAMESPACE
@@ -42,6 +44,8 @@ public:
     void loginOk();
     void logoutOk();
 
+    bool serveurPret() const;
+
 private slots:
     void on_pushButtonAddAuthor_clicked();
     void on_pushButtonAddSubject_clicked();
@@ -53,5 +57,18 @@ private slots:
 
 private:
     Ui::MainWindowClientBookEncoder *ui;
+
+    // Auteurs et sujets recus du serveur (meme ordre que dans les comboboxes : on y retrouve les ids)
+    vector<Author> authors;
+    vector<Subject> subjects;
+
+    bool connecte;   // true une fois le client pris en charge par le serveur
+
+    bool connecterAuServeur();
+    bool champValide(const string& valeur, const string& nomChamp, size_t tailleMax);
+    bool chargerAuteurs();
+    bool chargerSujets();
+    bool connexionPerdue();
+    void sessionTerminee();
 };
 #endif // MAINWINDOWCLIENTBOOKENCODER_H

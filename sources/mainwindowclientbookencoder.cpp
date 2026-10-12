@@ -4,54 +4,29 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <iostream>
+#include <cstring>
 #include "OBEP_Client.h"
 #include "Model.h"
 
 using namespace std;
 
+// A modifier pour la demonstration en reseau : adresse IP de la machine du serveur
+#define IP_SERVEUR   "127.0.0.1"
+#define PORT_SERVEUR 50000
+
+// Tailles maximales des champs (largeur des colonnes en base de donnees)
+#define TAILLE_MAX_NOM    20
+#define TAILLE_MAX_TITRE  100
+
 MainWindowClientBookEncoder::MainWindowClientBookEncoder(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindowClientBookEncoder)
+    , connecte(false)
 {
-    
     ui->setupUi(this);
-    if (!OBEP_Connect("0.0.0.0", 50000))
-    {
-        this->dialogError(
-            "Connexion",
-            "Impossible de se connecter au serveur."
-        );
-    }
 
-    char message[200]={0};
-   
-    if(MessageArriver(message,  sizeof(message)))
-    {
-        this->dialogMessage("Serveur", message);
-        if(strcmp(message, "File pleine")!=0)
-        {
-            message[0] = '\0';
-            MessageArriver(message,  sizeof(message));
-            this->dialogMessage("Serveur", message);
-
-        }
-        else
-        {
-            this->dialogError("Serveur","revenez plutard");
-            return;
-        }
-    }
-    else
-    {
-         this->dialogError("Serveur","Aucune notification valide reçue.");
-        return;
-    }
-
-    
-    this->logoutOk();
-    ::close(2);
-
-    //this->setFixedSize(1068, 301);
+    // Redirection de stderr vers /dev/null
+    freopen("/dev/null", "w", stderr);
 
     // Configuration de la table des employes (Personnel Garage)
     ui->tableWidgetEncodedBooks->setColumnCount(9);
@@ -69,9 +44,16 @@ MainWindowClientBookEncoder::MainWindowClientBookEncoder(QWidget *parent)
 
     this->logoutOk();
 
+    // Connexion au serveur : la fenetre n'est affichee (voir main.cpp) qu'une fois le client pris en charge
+    connecte = this->connecterAuServeur();
+}
+
+bool MainWindowClientBookEncoder::serveurPret() const {
+    return connecte;
 }
 
 MainWindowClientBookEncoder::~MainWindowClientBookEncoder() {
+    OBEP_close();
     delete ui;
 }
 
@@ -255,227 +237,212 @@ int MainWindowClientBookEncoder::dialogInputInt(const string& title,const string
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///// Fonctions gestion des boutons et items de menu (TO DO) /////////////////////////////////////////////////
+///// Fonctions gestion des boutons et items de menu ///////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Connexion au serveur puis attente de la prise en charge :
+// notification WAIT (file d'attente), puis READY (pris en charge), ou BUSY (file pleine)
+bool MainWindowClientBookEncoder::connecterAuServeur()
+{
+    if (!OBEP_Connect((char*)IP_SERVEUR, PORT_SERVEUR))
+    {
+        this->dialogError("Connexion", "Impossible de se connecter au serveur.");
+        return false;
+    }
+
+    char message[200] = {0};
+    if (!MessageArriver(message, sizeof(message)))
+    {
+        this->dialogError("Serveur", "Aucune notification valide reçue.");
+        OBEP_close();
+        return false;
+    }
+    if (strcmp(message, "File pleine") == 0)
+    {
+        this->dialogError("Serveur", "File pleine, revenez plus tard.");
+        OBEP_close();
+        return false;
+    }
+    this->dialogMessage("Serveur", message);
+
+    message[0] = '\0';
+    if (!MessageArriver(message, sizeof(message)))
+    {
+        this->dialogError("Serveur", "Aucune notification valide reçue.");
+        OBEP_close();
+        return false;
+    }
+    this->dialogMessage("Serveur", message);
+
+    return true;
+}
+
+// Verification d'un champ avant envoi ('#' est le separateur du protocole OBEP)
+bool MainWindowClientBookEncoder::champValide(const string& valeur, const string& nomChamp, size_t tailleMax)
+{
+    if (valeur.empty())
+    {
+        this->dialogError("Erreur", "Veuillez encoder : " + nomChamp);
+        return false;
+    }
+    if (valeur.size() > tailleMax)
+    {
+        this->dialogError("Erreur", nomChamp + " trop long (maximum " + to_string(tailleMax) + " caracteres)");
+        return false;
+    }
+    if (valeur.find('#') != string::npos)
+    {
+        this->dialogError("Erreur", nomChamp + " ne peut pas contenir le caractere #");
+        return false;
+    }
+    return true;
+}
+
+// Recupere les auteurs aupres du serveur et remplit la combobox
+bool MainWindowClientBookEncoder::chargerAuteurs()
+{
+    authors.assign(NB_MAX_AUTHORS, Author());
+    int nb = OBEP_Get_authors(authors.data(), NB_MAX_AUTHORS);
+    if (nb < 0)
+    {
+        authors.clear();
+        return false;
+    }
+    authors.resize(nb);
+
+    this->clearComboBoxAuthors();
+    for (int i = 0; i < nb; i++)
+        this->addComboBoxAuthors(string(authors[i].firstName) + " " + authors[i].lastName);
+    return true;
+}
+
+// Recupere les sujets aupres du serveur et remplit la combobox
+bool MainWindowClientBookEncoder::chargerSujets()
+{
+    subjects.assign(NB_MAX_SUBJECTS, Subject());
+    int nb = OBEP_Get_subjects(subjects.data(), NB_MAX_SUBJECTS);
+    if (nb < 0)
+    {
+        subjects.clear();
+        return false;
+    }
+    subjects.resize(nb);
+
+    this->clearComboBoxSubjects();
+    for (int i = 0; i < nb; i++)
+        this->addComboBoxSubjects(subjects[i].name);
+    return true;
+}
+
+// Fin de session : retour a l'etat "non connecte" (la connexion avec le serveur reste ouverte)
+void MainWindowClientBookEncoder::sessionTerminee()
+{
+    authors.clear();
+    subjects.clear();
+    this->clearComboBoxAuthors();
+    this->clearComboBoxSubjects();
+    this->clearTableBooks();
+    this->logoutOk();
+}
+
+// Si la connexion avec le serveur est perdue, on le signale et on ferme l'application
+bool MainWindowClientBookEncoder::connexionPerdue()
+{
+    if (OBEP_estConnecte())
+        return false;
+
+    this->dialogError("Connexion", "La connexion avec le serveur est perdue. L'application va se fermer.");
+    QApplication::quit();
+    return true;
+}
+
 void MainWindowClientBookEncoder::on_pushButtonAddAuthor_clicked() {
-      
     string lastName = this->dialogInputText("Nouvel auteur","Nom ?");
+    if (lastName.empty()) return; // Annuler
     string firstName = this->dialogInputText("Nouvel auteur","Prénom ?");
-    string birthDate = this->dialogInputText("Nouvel auteur","Date de naissance (yyyy-mm-dd) ?");
-    cout << "Nom : " << lastName << endl;
-    cout << "Prénom : " << firstName << endl;
-    cout << "Date de naissance : " << birthDate << endl;
+    if (firstName.empty()) return; // Annuler
+    string birthDate = this->dialogInputText("Nouvel auteur","Date de naissance (jj-mm-aaaa) ?");
+    if (birthDate.empty()) return; // Annuler
 
-    int id= OBEP_add_author (lastName.c_str(), firstName.c_str(), birthDate.c_str());
-    if(id >0)
+    if (!champValide(lastName, "Nom", TAILLE_MAX_NOM) || !champValide(firstName, "Prénom", TAILLE_MAX_NOM)
+        || !champValide(birthDate, "Date de naissance", 10))
+        return;
+
+    if (OBEP_add_author(lastName.c_str(), firstName.c_str(), birthDate.c_str()) <= 0)
     {
-        int nbAuteur = OBEP_Get_nb_authors();
-
-        cout << "Nombre d'auteurs : " << nbAuteur << endl;
-
-        if (nbAuteur > 0)
-        {
-            Author* auteurs = new Author[nbAuteur];
-
-            int nb = OBEP_Get_authors( auteurs, nbAuteur);
-
-            if (nb >= 0)
-            {
-                this->clearComboBoxAuthors();
-                for (int i = 0; i < nb; i++)
-                {
-                    cout << "ID : " << auteurs[i].id << endl;
-
-                    cout << "Nom : " << auteurs[i].lastName << endl;
-
-                    cout << "Prénom : " << auteurs[i].firstName << endl;
-
-                    string nomComplet = string(auteurs[i].firstName) + " " + string(auteurs[i].lastName);
-
-                    this->addComboBoxAuthors(nomComplet);
-                
-                }
-            }
-
-            delete[] auteurs;
-        }
-    }
-    else
-    {
-        this->dialogError("AddAuthor", "Erreur lors de l'ajout de l'auteur");
+        if (!connexionPerdue())
+            this->dialogError("Ajout d'un auteur", "Auteur déjà existant, date de naissance invalide (jj-mm-aaaa) ou erreur du serveur.");
+        return;
     }
 
+    // Mise a jour de la combobox
+    if (!chargerAuteurs())
+        connexionPerdue();
 }
 
 void MainWindowClientBookEncoder::on_pushButtonAddSubject_clicked() {
     string name = this->dialogInputText("Nouveau sujet","Nom ?");
-    cout << "Nom : " << name << endl;
+    if (name.empty()) return; // Annuler
 
-    int id = OBEP_add_subject(name.c_str());
-    if(id >0)
+    if (!champValide(name, "Nom du sujet", TAILLE_MAX_NOM))
+        return;
+
+    if (OBEP_add_subject(name.c_str()) <= 0)
     {
-        int nbSujet = OBEP_Get_nb_subjects();
-
-
-        if (nbSujet > 0)
-        {
-            Subject* sujets = new Subject[nbSujet];
-
-            int nb = OBEP_Get_subjects(sujets, nbSujet);
-            cout << "nb = "<< nb <<endl;
-
-            this->clearComboBoxSubjects();
-           
-            for (int i = 0; i < nbSujet; i++)
-            {
-                cout << "ID : "<< sujets[i].id << endl;
-
-                cout << "Nom : " << sujets[i].name << endl;
-
-                this->addComboBoxSubjects( sujets[i].name);
-               
-            }
-    
-
-            delete[] sujets;
-        }
+        if (!connexionPerdue())
+            this->dialogError("Ajout d'un sujet", "Sujet déjà existant ou erreur du serveur.");
+        return;
     }
-    else
-    {
-        this->dialogError("AddSubject", "Erreur lors de l'ajout du sujet");
-    }
+
+    // Mise a jour de la combobox
+    if (!chargerSujets())
+        connexionPerdue();
 }
 
 void MainWindowClientBookEncoder::on_pushButtonAddBook_clicked() {
-    int authorId;
-    int subjectId;
-    string title;
-    string isbn;
-    int pageCount;
-    float price;
-    int stockQuantity;
-    int publishYear;
-    string nomAuteur;
-    string nomSubjet;
+    string title = this->getTitle();
+    string isbn = this->getIsbn();
+    int pageCount = this->getPageCount();
+    float price = this->getPrice();
+    int publishYear = this->getPublishYear();
+    int stockQuantity = this->getStockQuantity();
 
-
-    title = this->getTitle();
-    if(title.empty())
-    {
-        this->dialogError("title", "veuillez indiquer le titre");
+    if (!champValide(title, "Titre", TAILLE_MAX_TITRE) || !champValide(isbn, "ISBN", TAILLE_MAX_NOM))
         return;
-
-    }
-    isbn = this->getIsbn();
-
-    if(isbn.empty())
+    if (pageCount <= 0)
     {
-        this->dialogError("isbn", "veuillez indiquer l'isbn");
+        this->dialogError("Erreur", "Veuillez indiquer le nombre de pages.");
         return;
     }
-    pageCount =  this->getPageCount();
-    if(pageCount == 0)
+    if (price <= 0)
     {
-        this->dialogError("pageCount", "veuillez indiquer le nombre de page");
-        return;
-    }
-    stockQuantity = this->getStockQuantity();
-    if(stockQuantity ==0)
-    {
-        this->dialogError("pageCount", "veuillez indiquer le nombre de page");
-       return;
-    }
-    price = this->getPrice();
-    if(price ==0)
-    {
-        this->dialogError("price", "veuillez indiquer le  prix");
-        return;
-    }
-    publishYear = this->getPublishYear();
-    if(publishYear ==0)
-    {
-        this->dialogError("publishYear", "veuillez indiquer l'annee");
+        this->dialogError("Erreur", "Veuillez indiquer le prix.");
         return;
     }
 
-    nomAuteur = this->getSelectionAuthor();
-    if(nomAuteur.empty())
+    // Les ids de l'auteur et du sujet sont ceux recus du serveur (meme position que dans la combobox)
+    int iAuthor = ui->comboBoxAuthors->currentIndex();
+    int iSubject = ui->comboBoxSubjects->currentIndex();
+    if (iAuthor < 0 || iAuthor >= (int)authors.size() || iSubject < 0 || iSubject >= (int)subjects.size())
     {
-        this->dialogError("nomAuteur", "veuillez indiquer le nomAuteur");
-        return;
-    }
-    nomSubjet = this->getSelectionSubject();
-    if(nomSubjet.empty())
-    {
-        this->dialogError("nomSubjet", "veuillez indiquer le  sujet");
+        this->dialogError("Erreur", "Veuillez sélectionner un auteur et un sujet.");
         return;
     }
 
-    string firstName;
-    string lastName;
-
-    // Séparation du prénom et du nom
-    size_t position = nomAuteur.find(' ');
-
-    if (position != string::npos)
+    int bookId = OBEP_add_book(authors[iAuthor].id, subjects[iSubject].id, title.c_str(), isbn.c_str(),
+                               pageCount, stockQuantity, price, publishYear);
+    if (bookId <= 0)
     {
-        firstName = nomAuteur.substr(0, position);
-        lastName = nomAuteur.substr(position + 1);
+        if (!connexionPerdue())
+            this->dialogError("Ajout d'un livre", "Erreur lors de l'ajout du livre (auteur ou sujet inexistant ?).");
+        return;
     }
 
-
-    
-    cout << "title = " << title << endl;
-    cout << "Isbn = " << isbn << endl;
-    cout << "PageCount = " << pageCount<< endl;
-    cout << "Price = " << price << endl;
-    cout << "PublishYear = " << price << endl;
-    cout << "Stock = " << publishYear << endl;
-
-    cout << "selection auteur = " << nomAuteur << endl;
-    cout << "lastName auteur = " << lastName << endl;
-    cout << "firstName auteur = " << firstName << endl;
-    cout << "selection sujet  = " << nomSubjet << endl;
-
-    authorId = OBEP_Get_author(lastName.c_str(), firstName.c_str());
-    if(authorId<=0)
-    {
-        this->dialogError("Erreur Get_author", "aucun auteurs trouver");
-    }
-    else
-    {
-        this->dialogMessage("OK Get_author", "auteur trouver");
-    }
-    
-
-    subjectId = OBEP_Get_subject(nomSubjet.c_str());
-
-    if(subjectId<=0)
-    {
-        this->dialogError("Erreur Get_subject", "aucun sujet trouver");
-    }
-    else
-    {
-        this->dialogMessage("Get_subject", "sujet trouver");
-    }
-
-    
-    int bookId;
-    bookId= OBEP_add_book(authorId, subjectId, title.c_str(), isbn.c_str(),pageCount,stockQuantity, price, publishYear);
-    if(bookId<=0)
-    {
-        this->dialogError("ADD_BOOK", "Erreur lors de l'ajout");
-    }
-    else
-    {
-        this->dialogMessage("ADD_BOOK", "livre ajouter");
-        this->addTupleTableBooks(bookId, title ,nomAuteur, nomSubjet , isbn, pageCount, publishYear, price, stockQuantity);
-    }
-    
+    this->addTupleTableBooks(bookId, title, this->getSelectionAuthor(), this->getSelectionSubject(),
+                             isbn, pageCount, publishYear, price, stockQuantity);
 }
 
 void MainWindowClientBookEncoder::on_pushButtonClear_clicked() {
-    cout<<"je suis passé par la"<<endl;
     ui->lineEditTitle->clear();
     ui->lineEditIsbn->clear();
     ui->spinBoxPageCount->setValue(0);
@@ -484,109 +451,47 @@ void MainWindowClientBookEncoder::on_pushButtonClear_clicked() {
     ui->spinBoxStockQuantity->setValue(0);
 }
 
-void MainWindowClientBookEncoder::on_actionLogin_triggered() 
-{
+void MainWindowClientBookEncoder::on_actionLogin_triggered() {
     string login = this->dialogInputText("Entrée en session","Login ?");
-    
-    while(login.empty())
-    {
-        this->dialogError("login", "Entrée un nom");
-        login = this->dialogInputText("Entrée en session","Login ?");
-    }
-
+    if (login.empty()) return; // Annuler
     string password = this->dialogInputText("Entrée en session","Password ?");
-    while(password.empty())
+    if (password.empty()) return; // Annuler
+
+    if (!champValide(login, "Login", TAILLE_MAX_NOM) || !champValide(password, "Password", TAILLE_MAX_NOM))
+        return;
+
+    if (!OBEP_Login(login.c_str(), password.c_str()))
     {
-        this->dialogError("password", "Entrée le mot de passe");
-        password = this->dialogInputText("Entrée en session","Password ?");
+        if (!connexionPerdue())
+            this->dialogError("Connexion", "Login ou mot de passe incorrect.");
+        return;
     }
 
-    if (OBEP_Login(login.c_str(), password.c_str()))
+    this->loginOk();
+
+    // Remplissage des deux comboboxes
+    if (!chargerAuteurs() || !chargerSujets())
     {
-        this->loginOk();
-
-        this->dialogMessage(
-            "Connexion",
-            "Connexion réussie !"
-        );
-
-
-        int nbAuteur = OBEP_Get_nb_authors();
-
-        cout << "Nombre d'auteurs : " << nbAuteur << endl;
-
-        if (nbAuteur > 0)
+        if (!connexionPerdue())
         {
-            Author* auteurs = new Author[nbAuteur];
-
-            int nb = OBEP_Get_authors( auteurs, nbAuteur);
-            if (nb >= 0)
-            {
-                for (int i = 0; i < nb; i++)
-                {
-                    cout << "ID : " << auteurs[i].id << endl;
-
-                    cout << "Nom : " << auteurs[i].lastName << endl;
-
-                    cout << "Prénom : " << auteurs[i].firstName << endl;
-
-                    string nomComplet = string(auteurs[i].firstName) + " " + string(auteurs[i].lastName);
-
-                    this->addComboBoxAuthors(nomComplet);
-                
-                }
-            }
-
-            delete[] auteurs;
-        }
-
-        /*SUBJECTS*/
-        int nbSujet = OBEP_Get_nb_subjects();
-
-
-        if (nbSujet > 0)
-        {
-            Subject* sujets = new Subject[nbSujet];
-
-            int nb = OBEP_Get_subjects(sujets, nbSujet);
-            cout << "nb = "<< nb <<endl;
-           
-            for (int i = 0; i < nbSujet; i++)
-            {
-                cout << "ID : "<< sujets[i].id << endl;
-
-                cout << "Nom : " << sujets[i].name << endl;
-
-                this->addComboBoxSubjects( sujets[i].name);
-               
-            }
-    
-
-            delete[] sujets;
+            this->dialogError("Connexion", "Impossible de récupérer les auteurs et les sujets.");
+            OBEP_Logout();
+            this->sessionTerminee();
         }
     }
-    else
-    {
-        this->dialogError("Connexion","Login ou mot de passe incorrect.");
-    }
-    
 }
 
 void MainWindowClientBookEncoder::on_actionLogout_triggered() {
-
-    if(OBEP_Logout())
+    if (!OBEP_Logout())
     {
-        this->logoutOk();
-        this->dialogMessage("Logout", "Deconnexion");
+        if (connexionPerdue())
+            return;
+        this->dialogError("Logout", "Erreur lors de la déconnexion.");
     }
-    else
-    {
-        this->dialogError("Logout", "Erreur de deconnexion");
-    }
-
-    
+    this->sessionTerminee();
 }
 
 void MainWindowClientBookEncoder::on_actionQuitter_triggered(){
+    OBEP_close();
     QApplication::exit(0);
 }

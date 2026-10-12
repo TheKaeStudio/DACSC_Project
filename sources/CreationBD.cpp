@@ -36,7 +36,7 @@ AUTHOR authors[] = {
   {-1,"Delannoy","Claude","1946-01-06"}, // id = 5
   {-1,"Le Cun","Yan","1960-07-08"},      // id = 6
   {-1,"Verne","Jules","1828-02-08"},     // id = 7
-  {-1,"Harris","Thomas","1940-09-022"}   // id = 8
+  {-1,"Harris","Thomas","1940-09-22"}   // id = 8
 };
 int nbAuthors = 8;
 
@@ -93,6 +93,7 @@ int main(int argc,char *argv[])
     finish_with_error(connexion);
   }
 
+
     // Supprimer la table clients si elle existe déjà
   if (mysql_query(connexion, "DROP TABLE IF EXISTS clients;")) {
     finish_with_error(connexion);
@@ -118,10 +119,10 @@ int main(int argc,char *argv[])
   }
 
   // Creation de la table employees
-  printf("Creation de la table subjects...\n");
+  printf("Creation de la table employees...\n");
   if (mysql_query(connexion,"CREATE TABLE employees ("
                       "id INT(4) AUTO_INCREMENT PRIMARY KEY,"
-                      "identifiant VARCHAR(20), "
+                      "login VARCHAR(20), "
                       "password VARCHAR(20));")) {
     finish_with_error(connexion);
   }
@@ -156,6 +157,12 @@ int main(int argc,char *argv[])
   }
 
 
+
+  // Ajout d'un employe (pour pouvoir se connecter avec le client Encodage)
+  printf("Ajout d'un employe a la table employees...\n");
+  if (mysql_query(connexion,"INSERT INTO employees (login, password) VALUES ('admin','admin');")) {
+    finish_with_error(connexion);
+  }
 
   // Ajout de tuples dans la table authors
   printf("Ajout de %d auteurs la table authors...\n",nbAuthors);

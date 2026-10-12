@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 #include <netdb.h>
 
 #include <sys/types.h>
@@ -9,30 +10,27 @@
 
 #include "TCP.h"
 
+#define TAILLE_ENTETE 4
 
 int ServerSocket(int port)
- {
+{
 	int sServeur;
-
-
-	printf("pid = %d\n",getpid());
 
 	if ((sServeur = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 	{
 		perror("Erreur de socket()");
-		exit(1);
+		return -1;
 	}
 
-	printf("socket creee = %d\n",sServeur);
-	
-	// Pour la recherche
+	// Reutilisation de l'adresse (relance immediate du serveur)
+	int opt = 1;
+	setsockopt(sServeur, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+	// Construction de l'adresse d'ecoute
 	struct addrinfo hints;
 	struct addrinfo *results;
-
 	char portToStr[10];
-	
-    sprintf(portToStr, "%d", port);
-   
+	sprintf(portToStr, "%d", port);
 
 	memset(&hints,0,sizeof(struct addrinfo));
 	hints.ai_family = AF_INET;
@@ -41,176 +39,162 @@ int ServerSocket(int port)
 
 	if (getaddrinfo(NULL,portToStr,&hints,&results) != 0)
 	{
+		fprintf(stderr,"Erreur de getaddrinfo()\n");
 		close(sServeur);
-		exit(1);
-	} 
+		return -1;
+	}
 
-	// Liaison de la socket à l'adresse
+	// Liaison de la socket a l'adresse
 	if (bind(sServeur,results->ai_addr,results->ai_addrlen) < 0)
 	{
 		perror("Erreur de bind()");
-		exit(1);
+		freeaddrinfo(results);
+		close(sServeur);
+		return -1;
 	}
 	freeaddrinfo(results);
-	printf("bind() reussi !\n");
 
-	// Mise à l'écoute de la socket
+	// Mise a l'ecoute de la socket
 	if (listen(sServeur,SOMAXCONN) == -1)
 	{
 		perror("Erreur de listen()");
-		exit(1);
+		close(sServeur);
+		return -1;
 	}
-	printf("listen() reussi !\n");
 
-
- 	return sServeur;
+	return sServeur;
 }
 
-int Accept(int sEcoute,char *ipClient) {
+int Accept(int sEcoute,char *ipClient)
+{
 	int sService;
+	struct sockaddr_storage adresse;
+	socklen_t taille = sizeof(adresse);
 
-	if ((sService = accept(sEcoute,NULL,NULL)) == -1)
+	if ((sService = accept(sEcoute,(struct sockaddr*)&adresse,&taille)) == -1)
 	{
 		perror("Erreur de accept()");
-		exit(1);
+		return -1;
 	}
 
-	printf("accept() reussi !");
-	printf("socket de service = %d\n",sService);
+	// Recuperation de l'adresse IP du client (sous forme de texte)
+	if (ipClient != NULL)
+	{
+		if (getnameinfo((struct sockaddr*)&adresse,taille,ipClient,46,NULL,0,NI_NUMERICHOST) != 0)
+			strcpy(ipClient,"?");
+	}
 
 	return sService;
 }
 
-int ClientSocket(char* ipServeur,int portServeur) 
+int ClientSocket(char* ipServeur,int portServeur)
 {
 	int sClient;
-	printf("pid = %d\n",getpid());
 
-	// Creation de la socket
 	if ((sClient = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 	{
 		perror("Erreur de socket()");
-		exit(1);
+		return -1;
 	}
 
-	printf("socket creee = %d\n",sClient);
-
-	// Construction de l'adresse du serveur 
-	struct addrinfo hints; 
-	struct addrinfo *results; 
-	memset(&hints,0,sizeof(struct addrinfo)); 
-	hints.ai_family = AF_INET; 
-	hints.ai_socktype = SOCK_STREAM; 
-	hints.ai_flags = AI_NUMERICSERV; 
+	// Construction de l'adresse du serveur
+	struct addrinfo hints;
+	struct addrinfo *results;
 	char portToStr[10];
 	sprintf(portToStr, "%d", portServeur);
 
-	if (getaddrinfo(ipServeur,portToStr,&hints,&results) != 0) 
+	memset(&hints,0,sizeof(struct addrinfo));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_NUMERICSERV;
+
+	if (getaddrinfo(ipServeur,portToStr,&hints,&results) != 0)
 	{
-		exit(1); 
+		fprintf(stderr,"Erreur de getaddrinfo()\n");
+		close(sClient);
+		return -1;
 	}
 
-	  // Affichage du contenu de l'adresse obtenue 
-	char host[NI_MAXHOST]; 
-	char port[NI_MAXSERV]; 
-	getnameinfo(results->ai_addr,results->ai_addrlen, 
-	host,NI_MAXHOST,port,NI_MAXSERV, 
-	NI_NUMERICSERV | NI_NUMERICHOST); 
-	printf("Mon Adresse IP: %s -- Mon Port: %s\n",host,port); 
-
-
-	
-	 // Demande de connexion
-	 if (connect(sClient,results->ai_addr,results->ai_addrlen) == -1)
-	 {
-		 perror("Erreur de connect()");
-		 exit(1);
-	 }
-	 printf("connect() reussi !");
+	// Demande de connexion
+	if (connect(sClient,results->ai_addr,results->ai_addrlen) == -1)
+	{
+		perror("Erreur de connect()");
+		freeaddrinfo(results);
+		close(sClient);
+		return -1;
+	}
+	freeaddrinfo(results);
 
 	return sClient;
 }
 
-int Send(int sSocket, char *data, int taille)
+/* Trame : 4 caracteres (taille des donnees, ex. "0008") suivis des donnees. */
+int Send(int sSocket,const char* data,int taille)
 {
-    int nbEcrits = 0;
-    int total = 0;
+	if (taille <= 0 || taille > TAILLE_MAX_DATA)
+		return -1;
 
-    char messagePlusEntete[taille + 5];
+	char trame[TAILLE_ENTETE + TAILLE_MAX_DATA + 1];
+	sprintf(trame,"%04d",taille);
+	memcpy(trame + TAILLE_ENTETE, data, taille);
 
-    sprintf(messagePlusEntete, "%04d", taille);
-    strcat(messagePlusEntete, data);
+	int tailleTrame = TAILLE_ENTETE + taille;
+	int total = 0;
 
-    printf("messagePlusEntete = %s\n", messagePlusEntete);
+	while (total < tailleTrame)
+	{
+		// MSG_NOSIGNAL : pas de signal SIGPIPE si l'autre a ferme la connexion
+		int nbEcrits = send(sSocket, trame + total, tailleTrame - total, MSG_NOSIGNAL);
+		if (nbEcrits <= 0)
+		{
+			if (nbEcrits < 0 && errno == EINTR) continue;
+			return -1;
+		}
+		total += nbEcrits;
+	}
 
-    int tailleMessage = taille + 4;
-
-    while (total < tailleMessage)
-    {
-        nbEcrits = write(sSocket,
-                         messagePlusEntete + total,
-                         tailleMessage - total);
-
-        if (nbEcrits <= 0)
-        {
-            perror("Erreur de Send");
-            close(sSocket);
-            exit(1);
-        }
-
-        total += nbEcrits;
-    }
-
-    return total;
+	return taille;
 }
 
-int Receive(int sSocket, char *data)
+int Receive(int sSocket,char* data)
 {
-    int nbLus=0;
-    int total = 0;
-    int tailleData;
+	char entete[TAILLE_ENTETE + 1];
+	int total = 0;
+	int nbLus;
 
-    char bufferEntete[5];
+	// Lecture de l'entete
+	while (total < TAILLE_ENTETE)
+	{
+		nbLus = read(sSocket, entete + total, TAILLE_ENTETE - total);
+		if (nbLus == 0)
+			return (total == 0) ? 0 : -1; // 0 = connexion fermee proprement
+		if (nbLus < 0)
+		{
+			if (errno == EINTR) continue;
+			return -1;
+		}
+		total += nbLus;
+	}
+	entete[TAILLE_ENTETE] = '\0';
 
-    // Lire  les 4 caractères de l'entête
-    while (total < 4)
-    {
-        nbLus = read(sSocket, bufferEntete + total, 4 - total);
+	int tailleData = atoi(entete);
+	if (tailleData <= 0 || tailleData > TAILLE_MAX_DATA)
+		return -1; // entete invalide
 
-        if (nbLus <= 0)
-        {
-            perror("Erreur de receive");
-            close(sSocket);
-            exit(1);
-        }
+	// Lecture des donnees
+	total = 0;
+	while (total < tailleData)
+	{
+		nbLus = read(sSocket, data + total, tailleData - total);
+		if (nbLus == 0) return -1; // connexion coupee en plein message
+		if (nbLus < 0)
+		{
+			if (errno == EINTR) continue;
+			return -1;
+		}
+		total += nbLus;
+	}
+	data[tailleData] = '\0';
 
-        total += nbLus;
-    }
-
-    bufferEntete[4] = '\0';
-
-    tailleData = atoi(bufferEntete);
-
-    total = 0;
-
-    // Lire  tailleData caractères
-    while (total < tailleData)
-    {
-        nbLus = read(sSocket,
-                     data + total,
-                     tailleData - total);
-
-        if (nbLus <= 0)
-        {
-            perror("Erreur de receive");
-            close(sSocket);
-            exit(1);
-        }
-
-        total += nbLus;
-    }
-
-    data[tailleData] = '\0';
-
-    return tailleData;
+	return tailleData;
 }

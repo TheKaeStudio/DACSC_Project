@@ -6,512 +6,270 @@
 #include <string.h>
 #include <unistd.h>
 
-int sClient;
+#define TAILLE_REQUETE 500
 
-/********************OBEP_Connect*************************/
+static int sClient = -1;
+
+/********************OBEP_Connect / OBEP_close*************************/
 bool OBEP_Connect(char* ip, int port)
 {
+    OBEP_close();
     sClient = ClientSocket(ip, port);
+    return sClient != -1;
+}
 
-    if (sClient == -1)
+void OBEP_close()
+{
+    if (sClient != -1)
     {
+        close(sClient);
+        sClient = -1;
+    }
+}
+
+bool OBEP_estConnecte()
+{
+    return sClient != -1;
+}
+
+/*********************************Echange*****************************/
+// Envoie la requete et attend la reponse. Retourne false si la connexion est
+// perdue (la connexion est alors fermee). reponse doit faire TAILLE_MAX_DATA+1 octets.
+static bool Echange(const char* requete, char* reponse)
+{
+    if (sClient == -1)
+        return false;
+
+    if (Send(sClient, requete, strlen(requete)) < 0 || Receive(sClient, reponse) <= 0)
+    {
+        OBEP_close();
         return false;
     }
-
     return true;
 }
-/*********************************Echange*****************************/
-void Echange(char* requete, char* reponse)
+
+// Verifie que la reponse est "<commande>#ok#..." ; *save permet ensuite de lire la suite
+static bool reponseOk(char* reponse, const char* commande, char** save)
 {
-    int nbLus, nbEcrits;
+    char* ptr = strtok_r(reponse, "#", save);
+    if (ptr == NULL || strcmp(ptr, commande) != 0)
+        return false;
 
-    if ((nbEcrits = Send(sClient,requete,strlen(requete))) == -1) 
-    { 
-        perror("Erreur de Send"); 
-        close(sClient); 
-        exit(1); 
-    }
-
-    // ***** Attente de la reponse ************************** 
-      
-    if ((nbLus = Receive(sClient,reponse)) < 0) 
-    { 
-        perror("Erreur de Receive"); 
-        close(sClient); 
-        exit(1); 
-    }
-
-  
-    if (nbLus == 0) 
-    { 
-        printf("Serveur arrete, pas de reponse reçue...\n"); 
-        close(sClient); 
-        exit(1); 
-    } 
-
-    reponse[nbLus] = '\0';
-
+    ptr = strtok_r(NULL, "#", save);
+    return ptr != NULL && strcmp(ptr, "ok") == 0;
 }
 
+// Pour les commandes ADD_xxx : retourne l'id recu, ou -1
+static int reponseId(char* reponse, const char* commande)
+{
+    char* save;
+    if (!reponseOk(reponse, commande, &save))
+        return -1;
+
+    char* ptr = strtok_r(NULL, "#", &save);
+    if (ptr == NULL)
+        return -1;
+    return atoi(ptr);
+}
 
 /********************OBEP_Login*************************/
-
 bool OBEP_Login(const char* user, const char* password)
 {
-    char requete[200];
-    char reponse[200];
+    char requete[TAILLE_REQUETE];
+    char reponse[TAILLE_MAX_DATA + 1];
+    char* save;
 
     if (user == NULL || password == NULL)
-    {
         return false;
-    }
-
-    sprintf(requete, "LOGIN#%s#%s#", user, password);
-
-    Echange(requete, reponse);
-
-    char *ptr = strtok(reponse, "#");
-
-    if (ptr == NULL || strcmp(ptr, "LOGIN") != 0)
+    if (snprintf(requete, sizeof(requete), "LOGIN#%s#%s#", user, password) >= (int)sizeof(requete))
         return false;
 
-    ptr = strtok(NULL, "#");
-
-    if (ptr == NULL)
+    if (!Echange(requete, reponse))
         return false;
 
-    if (strcmp(ptr, "ok") == 0)
-    {
-     
-        return true;
-    }
-
-    ptr = strtok(NULL, "#");
-
-    if (ptr != NULL)
-        printf("Erreur de login : %s\n", ptr);
-
-    return false;
+    return reponseOk(reponse, "LOGIN", &save);
 }
 
 /**************************OBEP_Logout************************************/
 bool OBEP_Logout()
 {
-    char requete[200];
-    char reponse[200];
+    char reponse[TAILLE_MAX_DATA + 1];
+    char* save;
 
-    sprintf(requete, "LOGOUT");
-    Echange(requete, reponse);
-
-    char *ptr = strtok(reponse, "#");
-    if(ptr==NULL || strcmp(ptr, "LOGOUT")!=0)
-    {
-        return false;
-    }
-    ptr=strtok(NULL,"#");
-    if(ptr==NULL || strcmp(ptr, "ok")!=0)
-    {
-        return false;
-    }
-
-    
-    return true;
-
+    return Echange("LOGOUT", reponse) && reponseOk(reponse, "LOGOUT", &save);
 }
 
-/******************************************************************************/
+/**************************OBEP_Get_nb_authors / OBEP_Get_nb_subjects************************************/
 int OBEP_Get_nb_authors()
 {
-    char requete[200];
-    char reponse[200];
-    int nbAuthors;
+    char reponse[TAILLE_MAX_DATA + 1];
 
-    sprintf(requete,"GET_AUTHORS_nb#");
-    Echange(requete, reponse);
-    char *ptr = strtok(reponse, "#");
-    if(ptr == NULL || strcmp(ptr, "GET_AUTHORS_nb") !=0)
-    {
+    if (!Echange("GET_AUTHORS_nb#", reponse))
         return -1;
-    }
-    ptr = strtok(NULL, "#");
-    if(ptr == NULL || strcmp(ptr, "ok")!=0)
-    {
-        return -1;
-    }
-
-    // nombre
-    ptr = strtok(NULL, "#");
-
-    if (ptr == NULL)
-    {
-        return -1;
-    }
-
-    nbAuthors = atoi(ptr);
-
-    return nbAuthors;
-
+    return reponseId(reponse, "GET_AUTHORS_nb"); // "GET_AUTHORS_nb#ok#<nombre>"
 }
 
-
-/******************************************************************************/
 int OBEP_Get_nb_subjects()
 {
-    char requete[200];
-    char reponse[200];
-    int nbSubject;
+    char reponse[TAILLE_MAX_DATA + 1];
 
-
-    sprintf(requete,"GET_SUBCJETS_nb#");
-    Echange(requete, reponse);
-    char *ptr = strtok(reponse, "#");
-    if(ptr == NULL || strcmp(ptr, "GET_SUBJECTS_nb") !=0)
-    {
+    if (!Echange("GET_SUBJECTS_nb#", reponse))
         return -1;
-    }
-    ptr = strtok(NULL, "#");
-    if(ptr == NULL || strcmp(ptr, "ok")!=0)
-    {
-        return -1;
-    }
-
-    ptr = strtok(NULL, "#");
-    if (ptr == NULL)
-    {
-        return -1;
-    }
-
-    nbSubject = atoi(ptr);
-
-    return nbSubject;
-
+    return reponseId(reponse, "GET_SUBJECTS_nb"); // "GET_SUBJECTS_nb#ok#<nombre>"
 }
-
 
 /**************************OBEP_Get_authors************************************/
 int OBEP_Get_authors(Author authors[], int maxAuthors)
 {
-    char requete[200];
-    char reponse[5000];
+    char reponse[TAILLE_MAX_DATA + 1];
+    char* save;
 
-    sprintf(requete, "GET_AUTHORS#");
-
-    Echange(requete, reponse);
-
-    char *ptr = strtok(reponse, "#");
-   
-
-    if (ptr == NULL || strcmp(ptr, "GET_AUTHORS") != 0)
-    {
+    if (!Echange("GET_AUTHORS#", reponse) || !reponseOk(reponse, "GET_AUTHORS", &save))
         return -1;
-    }
-    //ok
-    ptr = strtok(NULL, "#");
-   
-    if (ptr == NULL || strcmp(ptr, "ok") != 0)
-    {
-        return -1;
-    }
-    //nbAuteur
-    ptr = strtok(NULL, "#");
-  
 
+    char* ptr = strtok_r(NULL, "#", &save);
     if (ptr == NULL)
-    {
         return -1;
-    }
+    int nb = atoi(ptr);
 
-    int nbAuthors = atoi(ptr);
-   
-
-    if (nbAuthors > maxAuthors)
+    int i;
+    for (i = 0; i < nb && i < maxAuthors; i++)
     {
-        nbAuthors = maxAuthors;
+        char* id        = strtok_r(NULL, "#", &save);
+        char* lastName  = strtok_r(NULL, "#", &save);
+        char* firstName = strtok_r(NULL, "#", &save);
+        if (firstName == NULL)
+            return -1;
+
+        authors[i].id = atoi(id);
+        snprintf(authors[i].lastName, sizeof(authors[i].lastName), "%s", lastName);
+        snprintf(authors[i].firstName, sizeof(authors[i].firstName), "%s", firstName);
     }
-
-
-    for (int i = 0; i < nbAuthors; i++)
-    {
-        ptr = strtok(NULL, "#");
-        if (ptr == NULL)
-        {
-           break; 
-        } 
-        authors[i].id = atoi(ptr);
-
-        ptr = strtok(NULL, "#");
-        if (ptr == NULL) 
-        {
-            break; 
-        }
-        strcpy(authors[i].lastName, ptr);
-
-        ptr = strtok(NULL, "#");
-
-        if (ptr == NULL)
-        {
-           break;  
-        } 
-        strcpy(authors[i].firstName, ptr);
-    }
-
-    return nbAuthors;
+    return i;
 }
 
-/**************************OBEP_Get_subjets************************************/
+/**************************OBEP_Get_subjects************************************/
 int OBEP_Get_subjects(Subject subjects[], int maxSubjects)
 {
+    char reponse[TAILLE_MAX_DATA + 1];
+    char* save;
 
-    char requete[200];
-    char reponse[5000];
-    int nbSubject;
-
-    sprintf(requete,"GET_SUBJECTS#");
-    Echange(requete, reponse);
-    char *ptr = strtok(reponse, "#");
-
-
-    if(ptr == NULL || strcmp(ptr, "GET_SUBJECTS")!=0)
-    {
+    if (!Echange("GET_SUBJECTS#", reponse) || !reponseOk(reponse, "GET_SUBJECTS", &save))
         return -1;
-    }
 
-    ptr = strtok(NULL, "#");
-  
-    if(ptr == NULL || strcmp(ptr, "ko")==0)
-    {
-        return -1;
-    }
-    ptr = strtok(NULL,"#");
- 
+    char* ptr = strtok_r(NULL, "#", &save);
     if (ptr == NULL)
-    {
         return -1;
-    }
-    
-    nbSubject = atoi(ptr);
-    if(nbSubject > maxSubjects)
+    int nb = atoi(ptr);
+
+    int i;
+    for (i = 0; i < nb && i < maxSubjects; i++)
     {
-        nbSubject = maxSubjects;
+        char* id   = strtok_r(NULL, "#", &save);
+        char* name = strtok_r(NULL, "#", &save);
+        if (name == NULL)
+            return -1;
+
+        subjects[i].id = atoi(id);
+        snprintf(subjects[i].name, sizeof(subjects[i].name), "%s", name);
     }
-
-    for(int i=0; i< nbSubject; i++)
-    {
-        ptr= strtok(NULL, "#");
-        if (ptr == NULL)
-        {
-            break;
-        }
-        subjects[i].id = atoi(ptr);
-
-        ptr= strtok(NULL, "#");
-
-        if (ptr == NULL)
-        {
-            break;
-        }
-        strcpy(subjects[i].name, ptr);
-
-    }
-
-    return nbSubject;
-
-
+    return i;
 }
 
 /*********************OBEP_Get_author***************************/
-int OBEP_Get_author(const char * lastName, const char* firstName)
+// Recherche d'un auteur et recuperation de son id (pour l'authorId d'un livre)
+int OBEP_Get_author(const char* lastName, const char* firstName)
 {
-    char requete[200];
-    char reponse[200];
+    char requete[TAILLE_REQUETE];
+    char reponse[TAILLE_MAX_DATA + 1];
 
-    int id;
-    sprintf(requete, "GET_AUTHOR#%s#%s#", lastName, firstName);
-    Echange(requete , reponse);
-    char *ptr = strtok(reponse, "#");
-    if(ptr == NULL || strcmp(ptr,"GET_AUTHOR")!=0)
-    {
-       return -1;
-    }
-    ptr = strtok(NULL, "#");
-    if(ptr == NULL || strcmp(ptr,"ok")!=0)
-    {
-       return -1;
-    }
-    ptr = strtok(NULL, "#");
-    id = atoi(ptr);
-
-    return id;
-
-
+    if (snprintf(requete, sizeof(requete), "GET_AUTHOR#%s#%s#", lastName, firstName) >= (int)sizeof(requete))
+        return -1;
+    if (!Echange(requete, reponse))
+        return -1;
+    return reponseId(reponse, "GET_AUTHOR");
 }
 
 /*********************OBEP_Get_subject***************************/
-int OBEP_Get_subject(const char * Name)
+// Recherche d'un sujet
+int OBEP_Get_subject(const char* name)
 {
-    char requete[200];
-    char reponse[200];
+    char requete[TAILLE_REQUETE];
+    char reponse[TAILLE_MAX_DATA + 1];
 
-    int id;
-    sprintf(requete, "GET_SUBJECT#%s#", Name);
-    Echange(requete , reponse);
-    char *ptr = strtok(reponse, "#");
-    printf("requete recu : %s\n", ptr);
-    if(ptr == NULL || strcmp(ptr,"GET_SUBJECT")!=0)
-    {
-        printf("Erreur ici dans la requete GET_SUBJECT\n");
-       return -1;
-    }
-    ptr = strtok(NULL, "#");
-    printf("validation recu %s\n", ptr);
-
-    if(ptr == NULL || strcmp(ptr,"ok")!=0)
-    {
-       return -1;
-    }
-
-    ptr = strtok(NULL, "#");
-    id = atoi(ptr);
-    printf("id sujet : %d\n", id);
-
-    return id;
-
-
+    if (snprintf(requete, sizeof(requete), "GET_SUBJECT#%s#", name) >= (int)sizeof(requete))
+        return -1;
+    if (!Echange(requete, reponse))
+        return -1;
+    return reponseId(reponse, "GET_SUBJECT");
 }
 
 /**************************OBEP_add_author************************************/
-
-int OBEP_add_author (const char* lastName, const char* firstName, const char* birthday)
+int OBEP_add_author(const char* lastName, const char* firstName, const char* birthday)
 {
+    char requete[TAILLE_REQUETE];
+    char reponse[TAILLE_MAX_DATA + 1];
 
-    char requete[200];
-    char reponse[200];
-    int id ;
-    sprintf(requete, "ADD_AUTHOR#%s#%s#%s#", lastName, firstName, birthday);
-    Echange(requete, reponse);
-    char *ptr = strtok(reponse, "#");
-
-    if(ptr == NULL || strcmp(ptr,"ADD_AUTHOR") !=0)
-    {
+    if (snprintf(requete, sizeof(requete), "ADD_AUTHOR#%s#%s#%s#", lastName, firstName, birthday) >= (int)sizeof(requete))
         return -1;
-    }
-    ptr= strtok(NULL, "#");
-    if (ptr == NULL || strcmp(ptr, "ok") != 0)
-    {
-        return -1 ;
-    }
-
-    ptr= strtok(NULL, "#");
-    if (ptr == NULL )
-    {
+    if (!Echange(requete, reponse))
         return -1;
-    }
-    id= atoi(ptr);
-    return id;
-
+    return reponseId(reponse, "ADD_AUTHOR");
 }
 
-
-/**************************OBEP_add_subjet ************************************/
-int OBEP_add_subject (const char* nom)
+/**************************OBEP_add_subject ************************************/
+int OBEP_add_subject(const char* name)
 {
-    char requete[200];
-    char reponse[200];
-    int id;
-    sprintf(requete, "ADD_SUBJECT#%s#", nom);
-   
-    Echange(requete, reponse);
-    
-    char *ptr = strtok(reponse, "#");
+    char requete[TAILLE_REQUETE];
+    char reponse[TAILLE_MAX_DATA + 1];
 
-    if(ptr == NULL || strcmp(ptr,"ADD_SUBJECT") !=0)
-    {
+    if (snprintf(requete, sizeof(requete), "ADD_SUBJECT#%s#", name) >= (int)sizeof(requete))
         return -1;
-    }
-    ptr= strtok(NULL, "#");
-    if (ptr == NULL || strcmp(ptr, "ok") != 0)
-    {
-        return -1 ;
-    }
-
-    ptr= strtok(NULL, "#");
-    if (ptr == NULL )
-    {
+    if (!Echange(requete, reponse))
         return -1;
-    }
-    id= atoi(ptr);
-    return id;
-
-
+    return reponseId(reponse, "ADD_SUBJECT");
 }
 
 /**************************OBEP_add_book************************************/
-
-int OBEP_add_book (int authorId,int subjectId,const char* title, const char* isbn, int pageCount,int stockQuantity, float price,int publishYear)
+int OBEP_add_book(int authorId,int subjectId,const char* title,const char* isbn,int pageCount,int stockQuantity,float price,int publishYear)
 {
-    char requete[200];
-    char reponse[200];
-    int id;
-    sprintf(requete, "ADD_BOOK#%d#%d#%s#%s#%d#%d#%f#%d#", authorId, subjectId, title, isbn, pageCount, stockQuantity, price, publishYear);
-    Echange(requete, reponse);
-    char *ptr= strtok(reponse, "#");
+    char requete[TAILLE_REQUETE];
+    char reponse[TAILLE_MAX_DATA + 1];
 
-    if(ptr == NULL || strcmp(ptr,"ADD_BOOK") !=0)
-    {
+    if (snprintf(requete, sizeof(requete), "ADD_BOOK#%d#%d#%s#%s#%d#%d#%.2f#%d#",
+                 authorId, subjectId, title, isbn, pageCount, stockQuantity, price, publishYear) >= (int)sizeof(requete))
         return -1;
-    }
-    ptr= strtok(NULL, "#");
-    if (ptr == NULL || strcmp(ptr, "ok") != 0)
-    {
-        return -1 ;
-    }
-
-    ptr= strtok(NULL, "#");
-    if (ptr == NULL )
-    {
+    if (!Echange(requete, reponse))
         return -1;
-    }
-
-    id= atoi(ptr);
-    
-    return id;
-
-}
-
-/**********************OBEP_close***********************************/
-void OBEP_close()
-{
-    close(sClient);
+    return reponseId(reponse, "ADD_BOOK");
 }
 
 /************************MessageArriver()*******************************/
-
+// Notification envoyee spontanement par le serveur a la connexion :
+// "WAIT#...#" (en file d'attente), "READY#...#" (pris en charge) ou "BUSY#...#" (file pleine)
 bool MessageArriver(char *message, int taille)
 {
-    char reponse[200];
+    char reponse[TAILLE_MAX_DATA + 1];
+    char* save;
 
-    int nbLus = Receive(sClient, reponse);
+    if (sClient == -1)
+        return false;
 
-    if (nbLus <= 0 || nbLus >= (int)sizeof(reponse))
+    if (Receive(sClient, reponse) <= 0)
     {
+        OBEP_close();
         return false;
     }
 
-    reponse[nbLus] = '\0';
-
-    char* type = strtok(reponse, "#");
-    char* contenu = strtok(NULL, "#");
-
+    char* type = strtok_r(reponse, "#", &save);
+    char* contenu = strtok_r(NULL, "#", &save);
     if (type == NULL || contenu == NULL)
-    {
         return false;
-    }
 
     if (strcmp(type, "BUSY") == 0 || strcmp(type, "WAIT") == 0 || strcmp(type, "READY") == 0)
     {
         snprintf(message, taille, "%s", contenu);
         return true;
     }
-
     return false;
 }

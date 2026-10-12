@@ -2,40 +2,35 @@
 #define OBEP_H
 
 #include <stdbool.h>
-#include "Model.h"
 #define NB_MAX_CLIENTS 100
-#define NB_MAX_AUTHORS 100
-#define NB_MAX_SUBJECTS 100
 
-
-
+// Traite une requete et construit la reponse.
+// Retourne false si la connexion avec le client doit etre fermee, true sinon.
 bool OBEP(char* requete, char* reponse, int socket);
 
-bool OBEP_Login(const char* identifiant, const char* password);
-
+bool OBEP_Login(const char* login, const char* password);
 bool OBEP_Logout(int socket);
 
-int OBEP_GET_AUTHORS(Author authors[], int maxAuthors);
+// Construisent la reponse complete ("GET_AUTHORS#ok#nb#id#nom#prenom#...")
+// Retournent false en cas d'erreur.
+bool OBEP_GET_AUTHORS(char* reponse);
+bool OBEP_GET_SUBJECTS(char* reponse);
 
-int OBEP_GET_SUBJECTS(Subject subjects[], int maxSubjects);
-
-////////////////////////MES FONCTIONs////////////////////////////////////
+// Nombre d'auteurs / de sujets en base, ou -1 en cas d'erreur
 int OBEP_GET_NB_AUTHORS();
-
 int OBEP_GET_NB_SUBJECTS();
 
-int OBEP_GET_AUTHOR(const char *lastName, const char* firstName);
+// Recherche d'un auteur / d'un sujet : retournent son id, ou -1 s'il n'existe pas
+int OBEP_GET_AUTHOR(const char* lastName, const char* firstName);
+int OBEP_GET_SUBJECT(const char* name);
 
-int OBEP_GET_SUBJECT(const char* Name);
-///////////////////////////////////////////////////////////////////
+// Retournent l'id cree, ou -1 (deja existant / erreur)
+// La date de naissance s'ecrit "jj-mm-aaaa" (ou "aaaa-mm-jj")
+int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName, const char* birthday);
+int OBEP_ADD_SUBJECT(const char* name);
+// Retourne l'id du livre (existant ou ajoute), ou -1 si l'auteur et/ou le sujet n'existent pas
+int OBEP_ADD_BOOK(int authorId,int subjectId,const char* title,const char* isbn,int pageCount,int stockQuantity,float price,int publishYear);
 
-//int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName);
-
-int OBEP_ADD_AUTHOR(const char* lastName, const char* firstName, const char * birthday);
-
-int OBEP_ADD_SUBJECT(const char* nom);
-
-int OBEP_ADD_BOOK(int authorId,int subjectId,const char* title, const char* isbn, int pageCount,int stockQuantity, float price,int publishYear);
 void OBEP_Close();
 
 #endif

@@ -1,270 +1,222 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/ipc.h>
-#include <pthread.h>
-#include <time.h>
-#include <string.h>
 #include <unistd.h>
+#include <string.h>
+#include <signal.h>
+#include <pthread.h>
 #include <mysql.h>
-#include <cerrno>
-#include <setjmp.h>
-#include <errno.h>
-#include <mysql.h>
-#include <signal.h> 
 #include "TCP.h"
 #include "OBEP.h"
+
 #define FichierNom "FConfigServeur.txt"
 
-
-#define TAILLE_FILE_ATTENTE 2 
-int socketsAcceptees[TAILLE_FILE_ATTENTE]; 
-int indiceEcriture=0, indiceLecture=0, nbSocketsEnAttente = 0; 
+// File d'attente des sockets acceptees
+#define TAILLE_FILE_ATTENTE 10
+int socketsAcceptees[TAILLE_FILE_ATTENTE];
+int indiceEcriture = 0, indiceLecture = 0, nbSocketsEnAttente = 0;
 
 int sEcoute;
 int PORT_ENCODING, NB_THREADS_POOL;
 
-void HandlerSIGINT(int s); 
-void TraitementConnexion(int sService); 
-void* FctThreadClient(void* p); 
-
-pthread_mutex_t mutexSocketsAcceptees ; 
-pthread_cond_t  condSocketsAcceptees; 
+pthread_mutex_t mutexSocketsAcceptees = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t  condSocketsAcceptees = PTHREAD_COND_INITIALIZER;
 
 MYSQL* connexion;
-void* thread_function(void* arg);
 
-char requete[300];
-int tailleData;
+void HandlerSIGINT(int s);
+void TraitementConnexion(int sService);
+void* FctThreadClient(void* p);
 
-
-int main() 
+int main()
 {
-	char buffer[10];
-	// Connection à la BD
-    connexion = mysql_init(NULL);
-    if (mysql_real_connect(connexion,"localhost","Student","PassStudent1_","PourStudent",0,0,0) == NULL)
-    {
-      fprintf(stderr,"(SERVEUR) Erreur de connexion à la base de données...\n");
-      exit(1);  
-    }
+	// Connection a la BD
+	connexion = mysql_init(NULL);
+	if (mysql_real_connect(connexion,"localhost","Student","PassStudent1_","PourStudent",0,0,0) == NULL)
+	{
+		fprintf(stderr,"(SERVEUR) Erreur de connexion a la base de donnees...\n");
+		exit(1);
+	}
 
+	// Lecture du fichier de configuration : port puis nombre de threads
 	FILE *fp = fopen(FichierNom, "r");
-
-	if (fp == NULL) {
-	    perror("Erreur ouverture fichier");
-	    exit(EXIT_FAILURE);
+	if (fp == NULL)
+	{
+		perror("Erreur ouverture fichier de configuration");
+		exit(1);
 	}
-
-	fscanf(fp, "%d", &PORT_ENCODING);
-	fscanf(fp, "%d", &NB_THREADS_POOL);
-
-	printf("Port = %d\n", PORT_ENCODING);
-	printf("nombre de threads = %d\n", NB_THREADS_POOL);
-
+	if (fscanf(fp, "%d", &PORT_ENCODING) != 1 || fscanf(fp, "%d", &NB_THREADS_POOL) != 1
+	    || PORT_ENCODING <= 0 || NB_THREADS_POOL <= 0)
+	{
+		fprintf(stderr,"Fichier de configuration invalide (attendu : port puis nombre de threads)\n");
+		exit(1);
+	}
 	fclose(fp);
+	printf("Port = %d\n", PORT_ENCODING);
+	printf("Nombre de threads = %d\n", NB_THREADS_POOL);
 
+	// La file d'attente est vide
+	for (int i=0 ; i<TAILLE_FILE_ATTENTE ; i++)
+		socketsAcceptees[i] = -1;
 
-	pthread_mutex_init(&mutexSocketsAcceptees, NULL);
-	pthread_cond_init(&condSocketsAcceptees, NULL);
-
-	//on initialise le tableau qui va stocker les sockets de service pour chaque client accepter a -1 
-	for (int i=0 ; i<TAILLE_FILE_ATTENTE ; i++) 
+	// Armement des signaux
+	struct sigaction A;
+	A.sa_flags = 0;
+	sigemptyset(&A.sa_mask);
+	A.sa_handler = HandlerSIGINT;
+	if (sigaction(SIGINT,&A,NULL) == -1)
 	{
-		socketsAcceptees[i] = -1; 
+		perror("Erreur de sigaction");
+		exit(1);
 	}
 
-
-	// Armement des signaux 
-	struct sigaction A; 
-	A.sa_flags = 0; 
-	sigemptyset(&A.sa_mask); 
-	A.sa_handler = HandlerSIGINT; 
-
-	if (sigaction(SIGINT,&A,NULL) == -1) 
-	{ 
-		perror("Erreur de sigaction"); 
-		exit(1); 
-	} 
-
-
-	// Creation de la socket d'écoute 
-	if ((sEcoute = ServerSocket(PORT_ENCODING))== -1) 
-	{ 
-		perror("Erreur de ServeurSocket"); 
-		exit(1); 
-	} 
-
-
-	// Creation du pool de threads 
-	printf("Création du pool de threads.\n"); 
-	pthread_t th; 
-	for (int i=0 ; i<NB_THREADS_POOL ; i++) 
+	// Creation de la socket d'ecoute
+	if ((sEcoute = ServerSocket(PORT_ENCODING)) == -1)
 	{
-		pthread_create(&th,NULL,FctThreadClient,NULL); 
+		fprintf(stderr,"Erreur de ServerSocket\n");
+		exit(1);
 	}
-	
-	// Mise en boucle du serveur 
-	int sService; 
-	char ipClient[50]; 
-	bool verifPlace = false; 
-	printf("Demarrage du serveur.\n"); 
 
+	// Creation du pool de threads
+	printf("Creation du pool de threads.\n");
+	pthread_t th;
+	for (int i=0 ; i<NB_THREADS_POOL ; i++)
+	{
+		if (pthread_create(&th,NULL,FctThreadClient,NULL) != 0)
+		{
+			fprintf(stderr,"Erreur de pthread_create\n");
+			exit(1);
+		}
+	}
 
-	while(1) 
-	{ 
-		//printf("Attente d'une connexion...\n"); 
+	// Mise en boucle du serveur
+	int sService;
+	char ipClient[50];
+	printf("Demarrage du serveur.\n");
 
-		if ((sService = Accept(sEcoute,ipClient)) == -1) 
-		{ 
-			perror("Erreur de Accept"); 
-			close(sEcoute); 
-			OBEP_Close(); 
-			exit(1); 
-		} 
+	while(1)
+	{
+		if ((sService = Accept(sEcoute,ipClient)) == -1)
+		{
+			usleep(100000); // pause avant de reessayer
+			continue;
+		}
+		printf("Connexion acceptee : IP=%s socket=%d\n",ipClient,sService);
 
-	
-		pthread_mutex_lock(&mutexSocketsAcceptees); 
+		// Mise de la socket dans la file d'attente (si il y a de la place)
+		pthread_mutex_lock(&mutexSocketsAcceptees);
 		if (nbSocketsEnAttente < TAILLE_FILE_ATTENTE)
 		{
-		    socketsAcceptees[indiceEcriture] = sService;
+			socketsAcceptees[indiceEcriture] = sService;
+			indiceEcriture = (indiceEcriture + 1) % TAILLE_FILE_ATTENTE;
+			nbSocketsEnAttente++;
+			printf("Socket %d ajoutee dans la file\n", sService);
 
-		    indiceEcriture =(indiceEcriture + 1) % TAILLE_FILE_ATTENTE;
+			// Notification d'attente envoyee au client
+			char message[] = "WAIT#Vous êtes en attente#";
+			Send(sService, message, strlen(message));
 
-		    nbSocketsEnAttente++;
-
-		    printf("Socket %d ajoutée dans la file\n", sService);
-
-		    char message[] = "WAIT#Vous êtes en attente#";
-		    Send(sService, message, strlen(message));
-
-		    pthread_cond_signal(&condSocketsAcceptees);
+			pthread_mutex_unlock(&mutexSocketsAcceptees);
+			pthread_cond_signal(&condSocketsAcceptees);
 		}
 		else
 		{
-		    pthread_mutex_unlock(&mutexSocketsAcceptees);
+			pthread_mutex_unlock(&mutexSocketsAcceptees);
 
-		    char message[] = "BUSY#File pleine#";
-		    Send(sService, message, strlen(message));
-
-		    close(sService);
-		    continue;
-		}
-		pthread_mutex_unlock(&mutexSocketsAcceptees); 
-		pthread_cond_signal(&condSocketsAcceptees); 
-
-	} 
-
-	return 0;
-}
-
-
-
-void* FctThreadClient(void* p) 
-{ 
-	int sService; 
-
-	while(1) 
-	{ 
-		printf("\t[THREAD %p] Attente socket...\n",pthread_self()); 
-
-		// Attente d'une tâche 
-		pthread_mutex_lock(&mutexSocketsAcceptees); 
-		while (nbSocketsEnAttente == 0) 
-		{
-			pthread_cond_wait(&condSocketsAcceptees,&mutexSocketsAcceptees); 
-		}
-		sService = socketsAcceptees[indiceLecture]; 
-		socketsAcceptees[indiceLecture] = -1; 
-		indiceLecture = (indiceLecture + 1) % TAILLE_FILE_ATTENTE; 
-		nbSocketsEnAttente--;
-		
-
-		pthread_mutex_unlock(&mutexSocketsAcceptees); 
-
-		// Traitement de la connexion (consommation de la tâche) 
-		printf("\t[THREAD %p] Je m'occupe de la socket %d\n", pthread_self(),sService); 
-
-		///////////////////////////////////////////////
-
-		sprintf(requete, "READY#Vous êtes pris en charge#");
-    tailleData = strlen(requete);
-		Send(sService, requete, tailleData);
-		///////////////////////////////////////////////
-
-		TraitementConnexion(sService); 
-		printf("je suis en TraitementConnexion\n");
-		
-	} 
-} 
-
-void HandlerSIGINT(int s) 
-{ 
-	printf("\nArret du serveur.\n"); 
-	close(sEcoute); 
-
-
-	pthread_mutex_lock(&mutexSocketsAcceptees); 
-	for (int i=0 ; i<TAILLE_FILE_ATTENTE ; i++) 
-	{
-		if (socketsAcceptees[i] != -1)
-		{
-			close(socketsAcceptees[i]); 
+			char message[] = "BUSY#File pleine#";
+			Send(sService, message, strlen(message));
+			printf("File d'attente pleine : connexion refusee (socket %d)\n",sService);
+			close(sService);
 		}
 	}
-	 
-	pthread_mutex_unlock(&mutexSocketsAcceptees); 
-	OBEP_Close(); 
-	exit(0); 
-} 
+}
+
+void* FctThreadClient(void* p)
+{
+	int sService;
+
+	while(1)
+	{
+		printf("\t[THREAD %p] Attente socket...\n",(void*)pthread_self());
+
+		// Attente d'une tache
+		pthread_mutex_lock(&mutexSocketsAcceptees);
+		while (nbSocketsEnAttente == 0)
+			pthread_cond_wait(&condSocketsAcceptees,&mutexSocketsAcceptees);
+
+		sService = socketsAcceptees[indiceLecture];
+		socketsAcceptees[indiceLecture] = -1;
+		indiceLecture = (indiceLecture + 1) % TAILLE_FILE_ATTENTE;
+		nbSocketsEnAttente--;
+		pthread_mutex_unlock(&mutexSocketsAcceptees);
+
+		// Traitement de la connexion (consommation de la tache)
+		printf("\t[THREAD %p] Je m'occupe de la socket %d\n",(void*)pthread_self(),sService);
+
+		char message[] = "READY#Vous êtes pris en charge#";
+		if (Send(sService, message, strlen(message)) < 0)
+		{
+			close(sService); // le client est deja parti
+			continue;
+		}
+
+		TraitementConnexion(sService);
+	}
+	return NULL;
+}
+
+void HandlerSIGINT(int s)
+{
+	printf("\nArret du serveur.\n");
+	close(sEcoute);
+
+	// Fermeture des sockets en attente
+	for (int i=0 ; i<TAILLE_FILE_ATTENTE ; i++)
+		if (socketsAcceptees[i] != -1)
+			close(socketsAcceptees[i]);
+
+	OBEP_Close();
+	exit(0);
+}
 
 void TraitementConnexion(int sService)
 {
-	char requete[200], reponse[200]; 
-	int nbLus, nbEcrits; 
+	// Un message fait au maximum TAILLE_MAX_DATA octets (+ le '\0' final)
+	char requete[TAILLE_MAX_DATA + 1], reponse[TAILLE_MAX_DATA + 1];
+	int nbLus;
 	bool onContinue = true;
 
-//onContinue pour sortir de ma boucle de traitement
-	while(onContinue)
+	while (onContinue)
 	{
+		// ***** Reception de la requete **************************
+		nbLus = Receive(sService, requete);
 
-		if((nbLus = Receive(sService, requete))<0)
+		// ***** Fin de connexion ou erreur ? *********************
+		if (nbLus == 0)
 		{
-			perror("Erreur Receive");
-			close(sService);
-			HandlerSIGINT(0);
+			printf("\t[THREAD %p] Fin de connexion du client.\n",(void*)pthread_self());
+			break;
 		}
+		if (nbLus < 0)
+		{
+			printf("\t[THREAD %p] Erreur de reception : connexion abandonnee.\n",(void*)pthread_self());
+			break;
+		}
+		printf("\t[THREAD %p] Requete recue = %s\n",(void*)pthread_self(),requete);
 
+		// ***** Traitement de la requete *************************
+		onContinue = OBEP(requete,reponse,sService);
 
-		// ***** Fin de connexion ? ***************** 
-		if (nbLus == 0) 
-		{ 
-			printf("\t[THREAD %p] Fin de connexion du client.\n",pthread_self()); 
-			close(sService); 
-			return; 
-		} 
-		requete[nbLus] = 0; 
-
-		printf("\t[THREAD %p] Requete recue = %s\n",pthread_self(),requete); 
-
-		// ***** Traitement de la requete *********** 
-		onContinue = OBEP(requete,reponse,sService); 
-	
-		
-		// ***** Envoi de la reponse **************** 
-		if ((nbEcrits = Send(sService,reponse,strlen(reponse))) < 0) 
-		{ 
-			perror("Erreur de Send"); 
-			close(sService); 
-			HandlerSIGINT(0); 
-		} 
-		printf("\t[THREAD %p] Reponse envoyee = %s\n",pthread_self(),reponse); 
-
-
-		if (!onContinue)  
-			printf("\t[THREAD %p] Fin de connexion de la socket %d\n",pthread_self(),sService); 
-
+		// ***** Envoi de la reponse ******************************
+		if (Send(sService,reponse,strlen(reponse)) < 0)
+		{
+			printf("\t[THREAD %p] Erreur d'envoi : connexion abandonnee.\n",(void*)pthread_self());
+			break;
+		}
+		printf("\t[THREAD %p] Reponse envoyee = %s\n",(void*)pthread_self(),reponse);
 	}
+
+	// Fin de connexion : le client n'est plus logge et la socket est fermee
+	OBEP_Logout(sService);
+	close(sService);
+	printf("\t[THREAD %p] Fin de connexion de la socket %d\n",(void*)pthread_self(),sService);
 }
