@@ -1,3 +1,0 @@
-.SILENT:
-
-all: CreationBD, ServeurEncodage, 
