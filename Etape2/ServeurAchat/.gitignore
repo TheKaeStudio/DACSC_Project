@@ -1,0 +1,4 @@
+src/main/resources/config.properties
+target/
+.idea/
+*.log
